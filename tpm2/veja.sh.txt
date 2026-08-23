@@ -1,0 +1,9 @@
+sudo apt-get install libtss2-dev
+
+sudo apt update
+sudo apt install build-essential pkg-config libtss2-dev
+
+
+g++ -std=c++11 -o check_tpm check_tpm.cpp $(pkg-config --cflags --libs tss2-esys tss2-tcti-device)
+
+sudo apt install libtss2-tcti-tabrmd-dev
