@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 Memorandos - API Web</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: #161b22;
+            padding: 2rem;
+            border-radius: 16px;
+            border: 1px solid #30363d;
+        }
+        h1, h2, h3 {
+            color: #f0e6d0;
+            margin-top: 1.5rem;
+            border-bottom: 1px solid #21262d;
+            padding-bottom: 0.5rem;
+        }
+        h1 { font-size: 2rem; }
+        label {
+            display: block;
+            margin: 1rem 0 0.3rem;
+            font-weight: 600;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 0.6rem;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #e6edf3;
+            font-family: 'Consolas', monospace;
+            font-size: 0.9rem;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #58a6ff;
+        }
+        button {
+            background: #238636;
+            color: #fff;
+            border: none;
+            padding: 0.6rem 1.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+            margin-top: 0.5rem;
+        }
+        button:hover { background: #2ea043; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .row {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+        .col { flex: 1; min-width: 200px; }
+        .box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        .box-success { border-left: 4px solid #238636; }
+        .box-error { border-left: 4px solid #da3633; }
+        .box-info { border-left: 4px solid #58a6ff; }
+        .pre-wrap {
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-family: 'Consolas', monospace;
+            background: #0d1117;
+            padding: 0.8rem;
+            border-radius: 6px;
+            border: 1px solid #21262d;
+            max-height: 300px;
+            overflow: auto;
+        }
+        .badge {
+            display: inline-block;
+            background: #30363d;
+            color: #c9d1d9;
+            padding: 0.2rem 0.7rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+        .badge-green { background: #238636; color: #fff; }
+        .badge-yellow { background: #d29922; color: #fff; }
+        .badge-red { background: #da3633; color: #fff; }
+        .badge-blue { background: #1f6feb; color: #fff; }
+        hr { border: none; border-top: 1px solid #21262d; margin: 2rem 0; }
+        .footer { text-align: center; color: #8b949e; font-size: 0.9rem; margin-top: 2rem; }
+        .token-status {
+            display: inline-block;
+            margin-left: 0.5rem;
+            font-size: 0.8rem;
+        }
+        .loading {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid #30363d;
+            border-top-color: #58a6ff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.5rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>📦 Memorandos – API Web</h1>
+    <p style="color: #8b949e;">Interface para testar as rotas do servidor HTTP com autenticação Bearer Token.</p>
+
+    <!-- ============================================================ -->
+    <!-- TOKEN DE AUTENTICAÇÃO -->
+    <!-- ============================================================ -->
+    <div class="box box-info">
+        <h3>🔑 Autenticação</h3>
+        <label for="tokenInput">Token Bearer (64 caracteres hex)</label>
+        <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="tokenInput" placeholder="Cole o token gerado pelo servidor..." style="flex:1;">
+            <button id="saveTokenBtn" style="margin-top:0;">Salvar</button>
+            <button id="clearTokenBtn" style="margin-top:0; background:#da3633;">Limpar</button>
+        </div>
+        <div id="tokenStatus" class="token-status" style="margin-top:0.5rem;">⚪ Nenhum token definido</div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- FORMULÁRIO DE CONSULTA -->
+    <!-- ============================================================ -->
+    <h2>🔍 Enviar Consulta (POST /api/query)</h2>
+    <div class="row">
+        <div class="col">
+            <label for="usuario">Usuário</label>
+            <input type="text" id="usuario" placeholder="ex: joao" value="teste">
+        </div>
+        <div class="col">
+            <label for="dados">Dados (SQL / texto)</label>
+            <input type="text" id="dados" placeholder="SELECT * FROM users" value="SELECT 1">
+        </div>
+    </div>
+    <button id="sendQueryBtn">📤 Enviar Consulta</button>
+    <div id="queryResult" class="box" style="margin-top:1rem; display:none;">
+        <div id="queryStatus"></div>
+        <div id="queryResponse" class="pre-wrap"></div>
+        <div id="pollingArea" style="margin-top:0.5rem; display:none;">
+            <span class="loading"></span> Aguardando resultado...
+            <button id="pollBtn" style="margin-left:1rem; background:#1f6feb;">Poll manual</button>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- DOCUMENTAÇÃO DAS ROTAS -->
+    <!-- ============================================================ -->
+    <hr>
+    <h2>📋 Rotas Disponíveis</h2>
+    <div class="box">
+        <table style="width:100%; border-collapse:collapse; background:#0d1117; border-radius:8px; overflow:hidden;">
+            <thead>
+                <tr style="background:#21262d; color:#f0e6d0; text-align:left;">
+                    <th style="padding:0.6rem 1rem;">Método</th>
+                    <th style="padding:0.6rem 1rem;">Rota</th>
+                    <th style="padding:0.6rem 1rem;">Descrição</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td style="padding:0.5rem 1rem;"><span class="badge badge-green">GET</span></td><td>/health</td><td>Verifica se o servidor está ativo</td></tr>
+                <tr><td style="padding:0.5rem 1rem;"><span class="badge badge-green">GET</span></td><td>/stats</td><td>Estatísticas do servidor</td></tr>
+                <tr><td style="padding:0.5rem 1rem;"><span class="badge badge-yellow">POST</span></td><td>/api/query</td><td>Envia uma consulta (JSON com <code>usuario</code> e <code>dados</code>)</td></tr>
+                <tr><td style="padding:0.5rem 1rem;"><span class="badge badge-green">GET</span></td><td>/api/result/{ticket}</td><td>Obtém o resultado processado a partir do ticket</td></tr>
+                <tr><td style="padding:0.5rem 1rem;"><span class="badge badge-red">GET</span></td><td>/ (qualquer outro)</td><td>Serve arquivos estáticos do diretório <code>http_docs</code></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- COMO ADICIONAR NOVAS ROTAS -->
+    <!-- ============================================================ -->
+    <h2>🛠️ Adicionar Nova Rota</h2>
+    <div class="box box-info">
+        <p>Para adicionar uma nova rota no servidor, edite o arquivo <code>router.cpp</code> e insira um novo bloco na função <code>route_request</code>. Exemplo:</p>
+        <pre style="background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:0.8rem; overflow-x:auto; color:#e6edf3;">
+if (strcmp(req->method, "GET") == 0 && strcmp(req->path, "/minharota") == 0) {
+    resp->status_code = 200;
+    resp->content_type = "application/json";
+    resp->body = "{\"mensagem\":\"Ola, mundo!\"}";
+    resp->body_len = strlen(resp->body);
+    return true;
+}</pre>
+        <p style="margin-top:0.5rem;">Depois recompile e reinicie o servidor.</p>
+    </div>
+
+    <div class="footer">
+        <p>📅 Servidor HTTP rodando – <span id="serverInfo">conecte-se para obter informações</span></p>
+        <p><span class="badge">🔒 Autenticação obrigatória via Bearer Token</span></p>
+    </div>
+</div>
+
+<script>
+    // ============================================================
+    // GERENCIAMENTO DO TOKEN
+    // ============================================================
+    const TOKEN_KEY = 'memorandos_auth_token';
+    const tokenInput = document.getElementById('tokenInput');
+    const tokenStatus = document.getElementById('tokenStatus');
+    const saveTokenBtn = document.getElementById('saveTokenBtn');
+    const clearTokenBtn = document.getElementById('clearTokenBtn');
+
+    function updateTokenStatus() {
+        const token = localStorage.getItem(TOKEN_KEY);
+        if (token && token.length === 64) {
+            tokenStatus.innerHTML = '🟢 Token definido (válido)';
+            tokenInput.value = token;
+        } else if (token) {
+            tokenStatus.innerHTML = '🟡 Token inválido (deve ter 64 hex)';
+        } else {
+            tokenStatus.innerHTML = '⚪ Nenhum token definido';
+        }
+    }
+
+    function getToken() {
+        return localStorage.getItem(TOKEN_KEY) || '';
+    }
+
+    saveTokenBtn.addEventListener('click', () => {
+        const token = tokenInput.value.trim();
+        if (token.length === 64 && /^[0-9a-fA-F]{64}$/.test(token)) {
+            localStorage.setItem(TOKEN_KEY, token);
+            updateTokenStatus();
+            alert('Token salvo com sucesso!');
+        } else {
+            alert('Token inválido. Deve ter exatamente 64 caracteres hexadecimais.');
+        }
+    });
+
+    clearTokenBtn.addEventListener('click', () => {
+        localStorage.removeItem(TOKEN_KEY);
+        tokenInput.value = '';
+        updateTokenStatus();
+    });
+
+    // Carregar token salvo ao iniciar
+    window.addEventListener('DOMContentLoaded', () => {
+        const saved = localStorage.getItem(TOKEN_KEY);
+        if (saved) tokenInput.value = saved;
+        updateTokenStatus();
+        // Tentar obter /health para mostrar status do servidor
+        fetch('/health', {
+            headers: { 'Authorization': 'Bearer ' + getToken() }
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('serverInfo').textContent = '✅ Servidor online (status: ' + data.status + ')';
+        })
+        .catch(() => {
+            document.getElementById('serverInfo').textContent = '❌ Servidor indisponível ou token inválido';
+        });
+    });
+
+    // ============================================================
+    // ENVIO DE CONSULTA
+    // ============================================================
+    const sendBtn = document.getElementById('sendQueryBtn');
+    const usuarioInput = document.getElementById('usuario');
+    const dadosInput = document.getElementById('dados');
+    const queryResult = document.getElementById('queryResult');
+    const queryStatus = document.getElementById('queryStatus');
+    const queryResponse = document.getElementById('queryResponse');
+    const pollingArea = document.getElementById('pollingArea');
+    const pollBtn = document.getElementById('pollBtn');
+
+    let currentTicket = null;
+    let pollInterval = null;
+
+    function stopPolling() {
+        if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = null;
+        }
+        pollingArea.style.display = 'none';
+    }
+
+    function startPolling(ticket) {
+        currentTicket = ticket;
+        pollingArea.style.display = 'block';
+        pollBtn.disabled = false;
+        // Faz o primeiro poll imediatamente
+        pollResult(ticket);
+        // Configura polling a cada 2 segundos
+        if (pollInterval) clearInterval(pollInterval);
+        pollInterval = setInterval(() => {
+            pollResult(ticket);
+        }, 2000);
+    }
+
+    function pollResult(ticket) {
+        const token = getToken();
+        if (!token) {
+            queryStatus.innerHTML = '❌ Token não definido';
+            stopPolling();
+            return;
+        }
+        fetch('/api/result/' + ticket, {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.status === 'pronto' && data.dados) {
+                // Resultado pronto
+                queryStatus.innerHTML = '✅ Resultado obtido com sucesso!';
+                queryResponse.textContent = JSON.stringify(data.dados, null, 2);
+                stopPolling();
+                pollBtn.disabled = true;
+            } else if (data.status === 'expirado') {
+                queryStatus.innerHTML = '⏰ Ticket expirado';
+                queryResponse.textContent = JSON.stringify(data, null, 2);
+                stopPolling();
+                pollBtn.disabled = true;
+            } else if (data.status === 'aguardando') {
+                queryStatus.innerHTML = '⏳ Processando... (polling automático a cada 2s)';
+                queryResponse.textContent = 'Aguardando resultado...';
+            } else {
+                queryStatus.innerHTML = '⚠️ Resposta inesperada';
+                queryResponse.textContent = JSON.stringify(data, null, 2);
+                stopPolling();
+            }
+        })
+        .catch(err => {
+            queryStatus.innerHTML = '❌ Erro no polling: ' + err.message;
+            stopPolling();
+        });
+    }
+
+    sendBtn.addEventListener('click', () => {
+        const token = getToken();
+        if (!token) {
+            alert('Por favor, salve o token de autenticação primeiro.');
+            return;
+        }
+        const usuario = usuarioInput.value.trim();
+        const dados = dadosInput.value.trim();
+        if (!usuario || !dados) {
+            alert('Preencha os campos "Usuário" e "Dados".');
+            return;
+        }
+
+        // Desabilita o botão durante o envio
+        sendBtn.disabled = true;
+        sendBtn.textContent = '⏳ Enviando...';
+        queryResult.style.display = 'block';
+        queryStatus.innerHTML = '⏳ Enviando requisição...';
+        queryResponse.textContent = '';
+        stopPolling();
+
+        const body = JSON.stringify({ usuario, dados });
+
+        fetch('/api/query', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: body
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ticket) {
+                queryStatus.innerHTML = '✅ Ticket gerado: ' + data.ticket;
+                queryResponse.textContent = JSON.stringify(data, null, 2);
+                startPolling(data.ticket);
+            } else {
+                queryStatus.innerHTML = '❌ Erro na requisição';
+                queryResponse.textContent = JSON.stringify(data, null, 2);
+                pollBtn.disabled = true;
+            }
+        })
+        .catch(err => {
+            queryStatus.innerHTML = '❌ Erro de rede: ' + err.message;
+            queryResponse.textContent = err.message;
+        })
+        .finally(() => {
+            sendBtn.disabled = false;
+            sendBtn.textContent = '📤 Enviar Consulta';
+        });
+    });
+
+    // Polling manual (botão)
+    pollBtn.addEventListener('click', () => {
+        if (currentTicket) {
+            pollResult(currentTicket);
+        }
+    });
+
+    // ============================================================
+    // INFO DO SERVIDOR (atualização automática)
+    // ============================================================
+    function updateServerInfo() {
+        const token = getToken();
+        if (!token) return;
+        fetch('/health', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        })
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('serverInfo').textContent = '✅ Servidor online (status: ' + data.status + ')';
+        })
+        .catch(() => {
+            document.getElementById('serverInfo').textContent = '❌ Servidor indisponível ou token inválido';
+        });
+    }
+    setInterval(updateServerInfo, 10000); // a cada 10s
+</script>
+</body>
+</html>

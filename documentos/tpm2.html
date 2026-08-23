@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integração TPM 2.0 – Derivação de Chaves</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0f1117;
+            color: #d4d4d4;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            line-height: 1.7;
+            padding: 2rem 1.5rem;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        h1, h2, h3 {
+            color: #b7c9e2;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 500;
+            border-bottom: 1px solid #2a2f3a;
+            padding-bottom: 0.4rem;
+        }
+        h1 {
+            font-size: 2.2rem;
+            border-bottom: 3px solid #4a6a8f;
+        }
+        h2 {
+            font-size: 1.6rem;
+        }
+        h3 {
+            font-size: 1.25rem;
+            border-bottom: none;
+            margin-top: 1.5rem;
+        }
+        code {
+            background: #1e232c;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: #e6d9b8;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+        }
+        pre {
+            background: #1a1f28;
+            padding: 1.2rem;
+            border-radius: 10px;
+            overflow-x: auto;
+            border-left: 4px solid #4a6a8f;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin: 1.2rem 0;
+            color: #cfd8e6;
+        }
+        .note {
+            background: #1e2a36;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            border-left: 6px solid #f0a030;
+            margin: 1.5rem 0;
+        }
+        .warning {
+            background: #2a1e1e;
+            border-left-color: #d44;
+        }
+        .success {
+            background: #1e2a1e;
+            border-left-color: #4caf50;
+        }
+        ul, ol {
+            padding-left: 1.8rem;
+            margin: 0.8rem 0;
+        }
+        li {
+            margin-bottom: 0.4rem;
+        }
+        .badge {
+            display: inline-block;
+            background: #2a3f5a;
+            color: #b7d0f0;
+            padding: 0.2rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        hr {
+            border: none;
+            border-top: 1px solid #2a2f3a;
+            margin: 2.5rem 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.2rem 0;
+        }
+        th, td {
+            border: 1px solid #2a2f3a;
+            padding: 0.7rem 1rem;
+            text-align: left;
+        }
+        th {
+            background: #1a1f28;
+            color: #b7c9e2;
+        }
+        td {
+            background: #0f1117;
+        }
+        a {
+            color: #7aaae0;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        .footer {
+            margin-top: 3rem;
+            font-size: 0.85rem;
+            color: #6a7a8a;
+            text-align: center;
+            border-top: 1px solid #1e232c;
+            padding-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🔐 TPM 2.0 – Derivação de Chaves Baseadas em Hardware</h1>
+
+<p style="font-size:1.1rem; margin-bottom:1.5rem;">
+    Este documento descreve como utilizar o módulo <strong>TPMStart</strong> para derivar chaves criptográficas
+    a partir do segredo persistente armazenado na NVRAM do TPM 2.0.
+    A abordagem garante que cada chave seja <strong>única por finalidade</strong> (via <em>salt</em>)
+    e que o segredo raiz (pepper) nunca seja exposto fora do módulo.
+</p>
+
+<div class="note">
+    <strong>📌 Pré‑requisito:</strong> O servidor principal já deve ter sido inicializado com a flag
+    <code>--accepttp2mchanges=yes</code> para consentir a criação do índice NVRAM, se necessário.
+    O módulo TPM deve ter sido inicializado com sucesso via <code>TPMStart::initTPM()</code>.
+</div>
+
+<hr>
+
+<h2>1. Arquitetura Geral</h2>
+
+<p>
+    O sistema é composto por duas camadas:
+</p>
+<ul>
+    <li><strong>Camada de baixo (tpm2)</strong> – gerencia a comunicação com o TPM, lê/cria o pepper na NVRAM e oferece um <em>getter</em> seguro (<code>getPepper</code>).</li>
+    <li><strong>Camada de alto nível (TPMStart)</strong> – fornece uma função de derivação (<code>deriveKeyFromPepper</code>) que utiliza o pepper + <strong>salt obrigatório</strong> para gerar chaves de qualquer tamanho (até 1024 bytes).</li>
+</ul>
+
+<p>O fluxo de dados é unidirecional e seguro:</p>
+<pre>
+TPM (NVRAM) → pepper (64 B) → deriveKeyFromPepper(salt) → chave derivada
+                                      ↑
+                                 (salt fornecido pelo chamador)
+</pre>
+
+<p>
+    O pepper nunca é retornado diretamente para o chamador; apenas a chave derivada,
+    que depende do <em>salt</em> e do pepper, é exposta.
+</p>
+
+<hr>
+
+<h2>2. Funções Públicas (API)</h2>
+
+<h3>2.1 <code>bool initTPM(memorymanager::MemoryManagerThread* mm)</code></h3>
+<p>
+    Inicializa o gerenciador TPM, lê ou cria o pepper persistente.
+    Deve ser chamada uma única vez durante a inicialização do sistema.
+    Retorna <code>true</code> em sucesso.
+</p>
+
+<h3>2.2 <code>void shutdownTPM()</code></h3>
+<p>
+    Finaliza a sessão TPM e libera recursos. Chamada durante o encerramento controlado.
+</p>
+
+<h3>2.3 <code>bool deriveKeyFromPepper(...)</code></h3>
+<p>
+    <strong>Função principal para obtenção de chaves derivadas.</strong>
+</p>
+
+<pre>
+bool deriveKeyFromPepper(
+    memorymanager::MemoryManagerThread* mm,  // reservado (futuro uso com arena)
+    const uint8_t* salt,                     // OBRIGATÓRIO – diferenciador de propósito
+    size_t salt_len,
+    uint8_t* out_key,                        // buffer de saída
+    size_t out_len,                          // tamanho desejado (≤ 1024)
+    char* out_error,                         // opcional – mensagem de erro
+    size_t err_size
+);
+</pre>
+
+<ul>
+    <li><strong>salt</strong> – <em>obrigatório</em> (não pode ser nulo nem vazio). Define o domínio da chave (ex: <code>"encrypt_db"</code>, <code>"auth_jwt"</code>).</li>
+    <li><strong>out_len</strong> – tamanho da chave desejada em bytes (máximo 1024).</li>
+    <li><strong>Retorno</strong> – <code>true</code> se a derivação for bem‑sucedida, <code>false</code> com erro descrito em <code>out_error</code>.</li>
+</ul>
+
+<hr>
+
+<h2>3. Como Usar em Outros Scripts/Módulos</h2>
+
+<p>
+    Para utilizar a derivação de chaves em qualquer parte do sistema (ex: módulo de criptografia,
+    autenticação, armazenamento seguro), siga os passos abaixo.
+</p>
+
+<h3>3.1 Inclua o cabeçalho</h3>
+<pre>
+#include "start_tpm.hpp"   // ajuste o caminho conforme sua estrutura
+</pre>
+
+<h3>3.2 Certifique‑se de que o TPM foi inicializado</h3>
+<p>
+    No <code>main()</code> do servidor, <code>TPMStart::initTPM()</code> já é chamado.
+    Se estiver escrevendo um módulo separado que roda após a inicialização, pode confiar
+    que <code>g_tpm_initialized</code> estará <code>true</code>.
+</p>
+
+<h3>3.3 Derive a chave para seu propósito</h3>
+<p>
+    Escolha um <em>salt</em> único e descritivo para cada finalidade.
+    <strong>Não reutilize o mesmo salt para finalidades diferentes</strong>
+    (isso quebraria o isolamento).
+</p>
+
+<p><strong>Exemplo – chave de 32 bytes para criptografia de arquivos:</strong></p>
+<pre>
+uint8_t file_key[32] = {0};
+char err[256] = {0};
+const char* salt = "file_encryption_v1";
+
+if (TPMStart::deriveKeyFromPepper(
+        &g_memory_manager,                      // seu MemoryManagerThread
+        reinterpret_cast&lt;const uint8_t*&gt;(salt), strlen(salt),
+        file_key, sizeof(file_key),
+        err, sizeof(err))) {
+    // Use file_key para AES‑256‑GCM, por exemplo
+} else {
+    std::cerr &lt;&lt; "Falha ao derivar chave: " &lt;&lt; err &lt;&lt; std::endl;
+}
+</pre>
+
+<p><strong>Exemplo – chave de 64 bytes para autenticação HMAC:</strong></p>
+<pre>
+uint8_t hmac_key[64] = {0};
+const char* auth_salt = "hmac_session_v2";
+if (TPMStart::deriveKeyFromPepper(
+        &g_memory_manager,
+        (uint8_t*)auth_salt, strlen(auth_salt),
+        hmac_key, sizeof(hmac_key),
+        nullptr, 0)) {
+    // Usar hmac_key em HMAC‑SHA512
+}
+</pre>
+
+<h3>3.4 Limpeza</h3>
+<p>
+    A função <code>deriveKeyFromPepper</code> já limpa internamente todos os segredos.
+    O chamador deve <strong>zerar o buffer da chave</strong> após o uso
+    (ex: com <code>OPENSSL_cleanse</code> ou <code>memset</code> seguro) para evitar
+    vazamentos em memória.
+</p>
+<pre>
+// Após usar a chave:
+OPENSSL_cleanse(file_key, sizeof(file_key));
+</pre>
+
+<hr>
+
+<h2>4. Boas Práticas e Recomendações</h2>
+
+<ul>
+    <li><strong>Salt único por propósito</strong> – use strings descritivas e, se possível, inclua uma versão (ex: <code>"auth_jwt_v2"</code>). Isso permite rotacionar chaves sem afetar outros usos.</li>
+    <li><strong>Nunca armazene o pepper</strong> – ele reside apenas na NVRAM do TPM e é lido sob demanda.</li>
+    <li><strong>Chaves curtas?</strong> – o HKDF suporta qualquer tamanho; para AES‑256 use 32 bytes; para HMAC‑SHA512 use 64 bytes.</li>
+    <li><strong>Erros</strong> – sempre verifique o retorno e, se desejar, forneça um buffer de erro para diagnóstico.</li>
+    <li><strong>Thread safety</strong> – a função <code>deriveKeyFromPepper</code> não é thread‑safe; proteja com mutex se for chamada concorrentemente.</li>
+</ul>
+
+<div class="note warning">
+    <strong>⚠️ Atenção:</strong> A função deriva chaves usando HKDF‑SHA256. O tamanho máximo atual é <strong>1024 bytes</strong>
+    (limitado pelo buffer na stack). Se precisar de mais, ajuste a constante <code>MAX_TEMP</code> em <code>start_tpm.cpp</code>
+    e recompile.
+</div>
+
+<hr>
+
+<h2>5. Exemplo Completo de Integração</h2>
+
+<p>
+    Suponha que você esteja implementando um módulo de criptografia de arquivos
+    (<code>crypto_file.cpp</code>). O código pode ser estruturado assim:
+</p>
+
+<pre>
+#include "start_tpm.hpp"
+#include "memory_manager_thread.hpp"
+
+bool encryptFile(const std::string&amp; filename,
+                 memorymanager::MemoryManagerThread* mm) {
+    // 1. Derivar chave de 32 bytes para criptografia
+    uint8_t key[32] = {0};
+    char err[256] = {0};
+    const char* salt = "file_encryption_master";
+
+    if (!TPMStart::deriveKeyFromPepper(mm,
+                                       (const uint8_t*)salt, strlen(salt),
+                                       key, sizeof(key),
+                                       err, sizeof(err))) {
+        std::cerr &lt;&lt; "Erro ao derivar chave: " &lt;&lt; err &lt;&lt; std::endl;
+        return false;
+    }
+
+    // 2. Usar a chave para criptografar (ex: AES‑GCM)
+    // ...
+
+    // 3. Limpar chave
+    OPENSSL_cleanse(key, sizeof(key));
+    return true;
+}
+</pre>
+
+<hr>
+
+<h2>6. Segurança e Considerações Finais</h2>
+
+<ul>
+    <li><strong>Hardware Root of Trust</strong> – a segurança depende da integridade do TPM. Se o TPM for resetado, o pepper é perdido e o sistema deve ser reconfigurado.</li>
+    <li><strong>Backup</strong> – considere exportar o pepper (criptografado) para um local seguro em caso de falha do TPM, embora isso reduza a segurança.</li>
+    <li><strong>Auditoria</strong> – registre quando chaves são derivadas (mas nunca registre as chaves ou o pepper).</li>
+    <li><strong>Atualização</strong> – se o salt mudar, a chave derivada muda completamente; planeje uma estratégia de migração.</li>
+</ul>
+
+<div class="note success">
+    <strong>✅ Conclusão:</strong> O módulo TPMStart oferece uma API simples e segura para
+    transformar o segredo do hardware em chaves criptográficas práticas, sem expor o segredo raiz.
+    Ao adotar esta abordagem, seu sistema ganha uma camada extra de proteção contra ataques
+    offline e engenharia reversa.
+</div>
+
+<hr>
+
+<div class="footer">
+    Documento gerado para o projeto RAGCPLUS – Módulo TPM 2.0<br>
+    Versão 1.0 – 2026
+</div>
+
+</body>
+</html>

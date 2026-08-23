@@ -1,0 +1,2 @@
+# O nome do socket é sempre .s.PGSQL.5432 (5432 é a porta padrão)
+ls -la /var/run/postgresql/.s.PGSQL.5432

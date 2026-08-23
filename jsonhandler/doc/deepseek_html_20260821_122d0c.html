@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 JSON Generator – Guia de Funcionamento</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            line-height: 1.7;
+            padding: 2rem;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #161b22;
+            padding: 2.5rem;
+            border-radius: 16px;
+            border: 1px solid #30363d;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+        h1, h2, h3, h4 {
+            color: #f0e6d0;
+            margin-top: 1.8rem;
+            margin-bottom: 0.8rem;
+            border-bottom: 1px solid #21262d;
+            padding-bottom: 0.4rem;
+        }
+        h1 { font-size: 2.2rem; border-bottom: 2px solid #30363d; }
+        h2 { font-size: 1.8rem; }
+        h3 { font-size: 1.4rem; border-bottom: none; }
+        p, li { color: #c9d1d9; }
+        ul, ol { margin: 0.8rem 0 1.2rem 1.8rem; }
+        li { margin-bottom: 0.4rem; }
+        code {
+            font-family: 'Consolas', monospace;
+            background: #0d1117;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: #f0e6d0;
+            border: 1px solid #30363d;
+        }
+        pre {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.2rem;
+            overflow-x: auto;
+            margin: 1.2rem 0;
+            font-size: 0.9rem;
+        }
+        pre code {
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: #e6edf3;
+        }
+        .ascii-box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+            color: #8b949e;
+            white-space: pre;
+            overflow-x: auto;
+            line-height: 1.4;
+            margin: 1.2rem 0;
+        }
+        .tag {
+            display: inline-block;
+            padding: 0.15rem 0.7rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 0.3rem;
+        }
+        .tag-green { background: #238636; color: #fff; }
+        .tag-yellow { background: #d29922; color: #fff; }
+        .tag-blue { background: #1f6feb; color: #fff; }
+        .tag-red { background: #da3633; color: #fff; }
+        .tag-gray { background: #30363d; color: #c9d1d9; }
+        .box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.2rem;
+            margin: 1.2rem 0;
+        }
+        .box-success { border-left: 4px solid #238636; }
+        .box-warning { border-left: 4px solid #d29922; }
+        .box-danger { border-left: 4px solid #da3633; }
+        .box-info { border-left: 4px solid #58a6ff; }
+        .box-title { font-weight: 600; font-size: 1.1rem; margin-bottom: 0.4rem; color: #f0e6d0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.2rem 0;
+            background: #0d1117;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th {
+            background: #21262d;
+            color: #f0e6d0;
+            padding: 0.6rem 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid #21262d;
+            color: #c9d1d9;
+        }
+        tr:hover td { background: #1c2128; }
+        hr { border: none; border-top: 1px solid #21262d; margin: 2rem 0; }
+        .footer { text-align: center; color: #8b949e; font-size: 0.9rem; margin-top: 2rem; }
+        .emoji { font-size: 1.2rem; }
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .container { padding: 1.2rem; }
+            h1 { font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>📦 JSON Generator – Guia de Funcionamento</h1>
+    <p style="color: #8b949e; font-size: 1.1rem;">
+        Sistema de geração de JSON a partir de templates, com processamento assíncrono, zero heap e zero stack.
+    </p>
+    <p>
+        <span class="tag tag-green">v1.0</span>
+        <span class="tag tag-yellow">ESTÁVEL</span>
+        <span style="color: #8b949e; margin-left: 0.5rem;">📅 2026-08-20</span>
+    </p>
+
+    <hr>
+
+    <!-- ============================================================ -->
+    <h2>🧩 Visão Geral dos Componentes</h2>
+    <div class="ascii-box">
+┌─────────────────────────────────────────────────────────────────────┐
+│                         SISTEMA JSON GENERATOR                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌─────────────┐    ┌──────────────┐    ┌──────────────────────┐  │
+│  │   main.cpp  │───▶│  json_start  │───▶│  JsonGenerator       │  │
+│  │ (servidor)  │    │  (inicia)    │    │  (singleton)         │  │
+│  └─────────────┘    └──────────────┘    │  - init(mm, redis)  │  │
+│                                           │  - addTemplate()   │  │
+│                                           │  - getTemplateMem()│  │
+│                                           └──────────┬───────────┘  │
+│                                                      │              │
+│                                           ┌──────────▼───────────┐  │
+│                                           │  config_template     │  │
+│                                           │  - start_template    │  │
+│                                           │  - consultar_template│  │
+│                                           │  - gravar_template   │  │
+│                                           └──────────────────────┘  │
+│                                                                     │
+│  ┌─────────────┐    ┌──────────────────────────────────────────┐  │
+│  │  FakeRedis  │◀───│  json_worker_instance                    │  │
+│  │  (storage)  │    │  - processRequest(requestId, mm, redis) │  │
+│  └─────────────┘    │  - aloca 100 MB (arena)                │  │
+│                     │  - parse JSON (template + dados)       │  │
+│                     │  - applyTemplate (substitui <campo>)   │  │
+│                     │  - grava resultado no Redis (TTL 3min) │  │
+│                     └──────────────────────────────────────────┘  │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │  MemoryManagerThread (arena allocator)                       │  │
+│  │  - allocate(token, MB, startBlock, startAddr, endAddr, err)│  │
+│  │  - free(token, err)                                        │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>🚀 Fluxo de Inicialização</h2>
+    <ol>
+        <li><strong>main.cpp</strong> (servidor principal)
+            <ul>
+                <li>Inicializa <code>MemoryManagerThread</code> com X GB (ex.: 20 GB)</li>
+                <li>Inicializa <code>FakeRedis</code> com <code>redis.initialize(&amp;mm, 0, ...)</code></li>
+                <li>Chama <code>JSONStart::init(&amp;mm, &amp;redis, false, errBuf, sizeof(errBuf))</code></li>
+            </ul>
+        </li>
+        <li><strong>json_start.cpp</strong>
+            <ul>
+                <li>Inicializa <code>JsonGenerator</code> (singleton) com <code>gen->init(mm, redis, ...)</code>
+                    <ul>
+                        <li>Aloca 256 MB da arena (token 0)</li>
+                        <li>Chama <code>start_template</code> para estruturar a memória com cabeçalho e slots</li>
+                        <li>Carrega templates padrão (se houver)</li>
+                    </ul>
+                </li>
+                <li>Adiciona um template de teste (ex.: <code>usuario_teste</code> com placeholders <code>&lt;nome&gt;</code> e <code>&lt;senha&gt;</code>)</li>
+                <li>Executa um <strong>teste completo</strong>:
+                    <ul>
+                        <li>Cria requisição JSON: <code>{"template":"usuario_teste","dados":{"nome":"Maria","senha":"123456"}}</code></li>
+                        <li>Grava no Redis via <code>redis->set(...)</code></li>
+                        <li>Chama <code>JSONWorker::processRequest(requestId, mm, redis, &amp;resultId, ...)</code></li>
+                        <li>Lê o resultado do Redis e exibe</li>
+                        <li>Limpa as chaves</li>
+                    </ul>
+                </li>
+            </ul>
+        </li>
+        <li>O sistema entra no loop principal (aguarda Ctrl+C).</li>
+    </ol>
+
+    <!-- ============================================================ -->
+    <h2>📝 Formato dos Templates</h2>
+    <p>Os templates são strings JSON que contêm <strong>placeholders</strong> no formato <code>&lt;nome_do_campo&gt;</code>.</p>
+    <p>Exemplo de template:</p>
+    <pre><code>{
+  "nome": "&lt;nome&gt;",
+  "senha": "&lt;senha&gt;"
+}</code></pre>
+    <p>Os placeholders serão substituídos pelos valores fornecidos no campo <code>"dados"</code> da requisição.</p>
+
+    <div class="box box-info">
+        <div class="box-title">📌 Convenção</div>
+        <p>Placeholders usam <code>&lt;campo&gt;</code> onde <code>campo</code> é o nome da chave no objeto <code>dados</code>.</p>
+        <p>Exemplo: <code>&lt;nome&gt;</code> será substituído pelo valor de <code>"nome"</code> em <code>dados</code>.</p>
+        <p>Isso segue a especificação <code>recipejson.md</code> que define tipos como <code>&lt;string&gt;</code>, <code>&lt;int&gt;</code>, etc., mas aqui usamos <strong>nomes de campos</strong> para mapeamento direto.</p>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>📨 Enviando uma Requisição</h2>
+    <p>Para gerar um JSON, você deve armazenar uma <strong>requisição</strong> no Redis com o seguinte formato:</p>
+    <pre><code>{
+  "template": "usuario_teste",
+  "dados": {
+    "nome": "Maria",
+    "senha": "123456"
+  }
+}</code></pre>
+    <p>Essa string JSON deve ser gravada no Redis usando <code>redis->set(requestJson, TTL, ...)</code>.</p>
+    <p>O ID retornado por <code>set</code> é o <strong>requestId</strong> que você passa para <code>processRequest</code>.</p>
+
+    <div class="box box-success">
+        <div class="box-title">✅ Exemplo de envio (C++)</div>
+        <pre><code>const char* requestJson = R"({"template":"usuario_teste","dados":{"nome":"Maria","senha":"123456"}})";
+int64_t requestId = redis->set(std::string_view(requestJson, strlen(requestJson)), 60000, errBuf, sizeof(errBuf));
+if (requestId >= 0) {
+    // Processar
+    int64_t resultId = -1;
+    if (JSONWorker::processRequest(requestId, &amp;g_memory_manager, &amp;redis, &amp;resultId, errBuf, sizeof(errBuf))) {
+        // Sucesso – resultado disponível com ID = resultId
+    }
+}</code></pre>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>⚙️ Como Funciona o <code>processRequest</code></h2>
+    <ol>
+        <li><strong>Aloca 100 MB da arena</strong> (com token baseado em <code>pthread_self()</code> + aleatório) para processamento temporário.</li>
+        <li><strong>Lê a requisição</strong> do Redis usando <code>requestId</code>.</li>
+        <li><strong>Faz parsing</strong> da requisição JSON (extrai <code>template</code> e <code>dados</code>) – sem usar heap/stack.</li>
+        <li><strong>Obtém o template</strong> da memória do <code>JsonGenerator</code> (via <code>consultar_template</code>).</li>
+        <li><strong>Aplica substituições</strong>: para cada placeholder <code>&lt;campo&gt;</code> no template, busca o valor correspondente no objeto <code>dados</code> e substitui.</li>
+        <li><strong>Grava o JSON final</strong> no Redis com TTL de <strong>3 minutos</strong>.</li>
+        <li><strong>Remove</strong> a chave da requisição do Redis.</li>
+        <li><strong>Libera</strong> os 100 MB alocados.</li>
+        <li>Retorna o <strong>ID do resultado</strong> (<code>outResultId</code>).</li>
+    </ol>
+
+    <!-- ============================================================ -->
+    <h2>🔍 Obtendo o Resultado</h2>
+    <p>Após chamar <code>processRequest</code>, o resultado estará disponível no Redis com o ID retornado em <code>outResultId</code>.</p>
+    <p>Para ler o JSON gerado:</p>
+    <pre><code>char resultBuffer[4096];
+if (redis->get(resultId, resultBuffer, sizeof(resultBuffer), errBuf, sizeof(errBuf))) {
+    printf("JSON gerado: %s\n", resultBuffer);
+} else {
+    // erro
+}</code></pre>
+
+    <!-- ============================================================ -->
+    <h2>🧠 Arquitetura de Memória</h2>
+    <div class="box box-info">
+        <div class="box-title">Zero Heap / Zero Stack</div>
+        <ul>
+            <li><strong>Nenhuma alocação dinâmica</strong> (<code>new</code>/<code>malloc</code>) – toda memória vem da arena (<code>MemoryManager</code>).</li>
+            <li><strong>Nenhum array local</strong> na stack – buffers são alocados na arena.</li>
+            <li>Únicos dados na stack: ponteiros, escalares (<code>int</code>, <code>size_t</code>) e pequenos buffers de erro (256 bytes) – aceitáveis.</li>
+        </ul>
+    </div>
+
+    <table>
+        <thead>
+            <tr><th>Componente</th><th>Memória Alocada</th><th>Token/Thread</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><strong>JsonGenerator</strong></td><td>256 MB (fixo)</td><td>0 (main thread)</td></tr>
+            <tr><td><strong>FakeRedis</strong></td><td>2 GB</td><td>0 (main thread)</td></tr>
+            <tr><td><strong>json_worker_instance</strong> (cada processamento)</td><td>100 MB (temporário)</td><td><code>pthread_self() ^ aleatório</code></td></tr>
+            <tr><td><strong>Teste de resultado</strong> (json_start)</td><td>1 MB (temporário)</td><td><code>pthread_self() ^ 0x12345678</code></td></tr>
+        </tbody>
+    </table>
+    <p style="color: #8b949e;">Cada thread só pode ter <strong>um empréstimo ativo</strong> por vez – por isso usamos tokens diferentes para cada alocação.</p>
+
+    <!-- ============================================================ -->
+    <h2>📋 Exemplo Completo de Uso no <code>main</code></h2>
+    <pre><code>#include "json_worker_instance.hpp"
+#include "json_start.hpp"
+#include "../../memorymanager/include/memory_manager_thread.hpp"
+#include "../../fakeredis/include/fake_redis.hpp"
+
+int main() {
+    memorymanager::MemoryManagerThread mm;
+    mm.init(20); // 20 GB
+
+    FakeRedis::FakeRedis&amp; redis = FakeRedis::FakeRedis::getInstance();
+    redis.initialize(&amp;mm, 0, ...);
+
+    if (!JSONStart::init(&amp;mm, &amp;redis, false, errBuf, sizeof(errBuf))) {
+        // falha
+        return 1;
+    }
+
+    // Em algum lugar, ao receber uma requisição:
+    const char* req = R"({"template":"usuario_teste","dados":{"nome":"João","senha":"789"}})";
+    int64_t reqId = redis.set(std::string_view(req, strlen(req)), 60000, errBuf, sizeof(errBuf));
+    if (reqId >= 0) {
+        int64_t resId = -1;
+        if (JSONWorker::processRequest(reqId, &amp;mm, &amp;redis, &amp;resId, errBuf, sizeof(errBuf))) {
+            // JSON gerado está em resId
+            char json[4096];
+            if (redis.get(resId, json, sizeof(json), errBuf, sizeof(errBuf))) {
+                printf("Resultado: %s\n", json);
+            }
+            redis.del(resId, ...);
+        }
+        redis.del(reqId, ...);
+    }
+
+    // Loop principal...
+    while (true) sleep(1);
+    return 0;
+}</code></pre>
+
+    <!-- ============================================================ -->
+    <hr>
+    <h2>📌 Resumo</h2>
+    <div class="box box-success">
+        <div class="box-title">✅ Sistema pronto para produção</div>
+        <ul>
+            <li>Inicialização simples via <code>JSONStart::init</code></li>
+            <li>Templates armazenados com placeholders <code>&lt;campo&gt;</code></li>
+            <li>Requisições enviadas como JSON via Redis</li>
+            <li>Processamento assíncrono com alocação temporária (100 MB)</li>
+            <li>Resultado disponível com TTL de 3 minutos</li>
+            <li>Totalmente zero heap e zero stack</li>
+            <li>Thread-safe (cada processamento usa token único)</li>
+        </ul>
+    </div>
+
+    <div class="footer">
+        <p>📅 Documentação gerada em 2026-08-20</p>
+        <p><span class="emoji">🚀</span> Sistema JSON Generator – v1.0</p>
+    </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🍰 Receita do Bolo - Memory Manager & Config</title>
+    <style>
+        /* Reset e estilos gerais */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            line-height: 1.6;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #161b22;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            border: 1px solid #30363d;
+        }
+        
+        /* Cabeçalho */
+        .header {
+            border-bottom: 2px solid #30363d;
+            padding-bottom: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            color: #f0e6d0;
+            margin-bottom: 0.5rem;
+        }
+        
+        .header .badge {
+            display: inline-block;
+            background: #238636;
+            color: #fff;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+        
+        .header .badge-orange {
+            background: #d29922;
+        }
+        
+        .header .meta {
+            color: #8b949e;
+            font-size: 0.95rem;
+            margin-top: 0.5rem;
+        }
+        
+        /* Títulos */
+        h2 {
+            color: #f0e6d0;
+            font-size: 1.8rem;
+            margin-top: 2.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #21262d;
+        }
+        
+        h3 {
+            color: #e6edf3;
+            font-size: 1.3rem;
+            margin-top: 1.8rem;
+            margin-bottom: 0.8rem;
+        }
+        
+        h4 {
+            color: #c9d1d9;
+            font-size: 1.1rem;
+            margin-top: 1.2rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Parágrafos */
+        p {
+            color: #c9d1d9;
+            margin-bottom: 1rem;
+        }
+        
+        /* Listas */
+        ul, ol {
+            margin: 1rem 0 1.5rem 1.5rem;
+            color: #c9d1d9;
+        }
+        
+        li {
+            margin-bottom: 0.5rem;
+        }
+        
+        /* Tabelas */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: #0d1117;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        th {
+            background: #21262d;
+            color: #f0e6d0;
+            padding: 0.75rem 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #21262d;
+            color: #c9d1d9;
+        }
+        
+        tr:hover td {
+            background: #1c2128;
+        }
+        
+        /* Blocos de código */
+        pre {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.2rem;
+            overflow-x: auto;
+            margin: 1.2rem 0;
+            position: relative;
+        }
+        
+        code {
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 0.9rem;
+            color: #e6edf3;
+        }
+        
+        pre code {
+            color: #e6edf3;
+            display: block;
+            white-space: pre;
+        }
+        
+        /* Destaque de sintaxe simplificado */
+        .kw { color: #ff7b72; }
+        .str { color: #a5d6ff; }
+        .cmt { color: #8b949e; font-style: italic; }
+        .fn { color: #d2a8ff; }
+        .type { color: #ffa657; }
+        .num { color: #79c0ff; }
+        .op { color: #ff7b72; }
+        
+        /* Cards e boxes */
+        .box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.2rem 0;
+        }
+        
+        .box-success {
+            border-left: 4px solid #238636;
+        }
+        
+        .box-warning {
+            border-left: 4px solid #d29922;
+        }
+        
+        .box-danger {
+            border-left: 4px solid #da3633;
+        }
+        
+        .box-info {
+            border-left: 4px solid #58a6ff;
+        }
+        
+        .box-title {
+            font-weight: 600;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: #f0e6d0;
+        }
+        
+        /* Checklist */
+        .checklist {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .checklist li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #21262d;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .checklist li:last-child {
+            border-bottom: none;
+        }
+        
+        .checklist .check {
+            color: #238636;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        
+        .checklist .uncheck {
+            color: #8b949e;
+        }
+        
+        /* Estrutura ASCII */
+        .ascii-box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+            color: #8b949e;
+            white-space: pre;
+            overflow-x: auto;
+            line-height: 1.4;
+            margin: 1.2rem 0;
+        }
+        
+        /* Grid de componentes */
+        .components-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.2rem;
+            margin: 1.5rem 0;
+        }
+        
+        .component-card {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.2rem;
+        }
+        
+        .component-card .title {
+            font-weight: 600;
+            color: #f0e6d0;
+            font-size: 1.1rem;
+            margin-bottom: 0.3rem;
+        }
+        
+        .component-card .path {
+            color: #8b949e;
+            font-size: 0.85rem;
+            font-family: monospace;
+            margin-bottom: 0.5rem;
+        }
+        
+        .component-card .desc {
+            color: #c9d1d9;
+            font-size: 0.95rem;
+        }
+        
+        /* Tags */
+        .tag {
+            display: inline-block;
+            padding: 0.15rem 0.6rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 0.3rem;
+        }
+        
+        .tag-green { background: #238636; color: #fff; }
+        .tag-yellow { background: #d29922; color: #fff; }
+        .tag-red { background: #da3633; color: #fff; }
+        .tag-blue { background: #1f6feb; color: #fff; }
+        .tag-gray { background: #30363d; color: #c9d1d9; }
+        
+        /* Responsividade */
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .container { padding: 1.2rem; }
+            .header h1 { font-size: 1.8rem; }
+            h2 { font-size: 1.4rem; }
+            .components-grid { grid-template-columns: 1fr; }
+            .ascii-box { font-size: 0.7rem; }
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0d1117;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #30363d;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #484f58;
+        }
+        
+        /* Links */
+        a {
+            color: #58a6ff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Citação */
+        blockquote {
+            border-left: 3px solid #30363d;
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: #8b949e;
+        }
+        
+        /* Separador */
+        hr {
+            border: none;
+            border-top: 1px solid #21262d;
+            margin: 2rem 0;
+        }
+        
+        .emoji {
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- ============================================================ -->
+    <!-- HEADER -->
+    <!-- ============================================================ -->
+    <div class="header">
+        <h1>🍰 Receita do Bolo</h1>
+        <p style="font-size: 1.3rem; color: #f0e6d0; font-weight: 300;">
+            Memory Manager &amp; Config
+        </p>
+        <div style="margin-top: 0.8rem;">
+            <span class="badge">v1.0.0</span>
+            <span class="badge badge-orange">ESTÁVEL</span>
+            <span style="color: #8b949e; margin-left: 0.5rem;">📅 2026-08-09</span>
+        </div>
+        <div class="meta">
+            ✅ Pronto para produção • Zero heap • Thread-safe
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- INGREDIENTES -->
+    <!-- ============================================================ -->
+    <h2>📦 Ingredientes</h2>
+    <table>
+        <thead>
+            <tr><th>Componente</th><th>Localização</th><th>Descrição</th></tr>
+        </thead>
+        <tbody>
+            <tr><td><strong>MemoryManager</strong></td><td><code>memorymanager/</code></td><td>Gerenciador de memória com mmap</td></tr>
+            <tr><td><strong>LerConfig</strong></td><td><code>lerconfig/</code></td><td>Leitor de configurações (singleton)</td></tr>
+            <tr><td><strong>Headers</strong></td><td><code>*/include/</code></td><td>Headers públicos para integração</td></tr>
+        </tbody>
+    </table>
+
+    <!-- ============================================================ -->
+    <!-- ESTRUTURA -->
+    <!-- ============================================================ -->
+    <h2>🏗️ Estrutura do Projeto</h2>
+    <div class="ascii-box">
+MynewVersionRAg/
+├── memorymanager/
+│   ├── include/
+│   │   ├── memory_manager_thread.hpp   ← Header principal do MM
+│   │   ├── block_allocator.hpp
+│   │   ├── block_address_calculator.hpp
+│   │   ├── createmmapa.hpp
+│   │   └── request_queue.hpp
+│   └── src/
+│       ├── memory_manager_thread.cpp
+│       ├── block_allocator.cpp
+│       ├── block_address_calculator.cpp
+│       ├── createmmapa.cpp
+│       └── request_queue.cpp
+│
+├── lerconfig/
+│   ├── include/
+│   │   └── config.hpp              ← Header principal do Config
+│   └── src/
+│       └── config.cpp
+│
+└── docs/
+    └── receita_do_bolo.md          ← Este arquivo
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PASSO A PASSO -->
+    <!-- ============================================================ -->
+    <h2>🍰 Passo a Passo</h2>
+
+    <h3>1️⃣ Inicializar o MemoryManager</h3>
+    <pre><code><span class="cmt">// main.cpp (ou qualquer arquivo que inicia o sistema)</span>
+
+<span class="kw">#include</span> <span class="str">"../../memorymanager/include/memory_manager_thread.hpp"</span>
+
+<span class="cmt">// 1. Cria uma instância GLOBAL (na stack!)</span>
+<span class="kw">static</span> <span class="type">memorymanager::MemoryManagerThread</span> g_memory_manager;
+
+<span class="cmt">// 2. Inicializa com X GB (1-30)</span>
+<span class="type">uint32_t</span> gb = <span class="num">20</span>;  <span class="cmt">// 20 GB</span>
+<span class="kw">if</span> (<span class="op">!</span>g_memory_manager.<span class="fn">init</span>(gb)) {
+    <span class="fn">std::cerr</span> <span class="op">&lt;&lt;</span> <span class="str">"❌ Falha ao inicializar MemoryManager!"</span> <span class="op">&lt;&lt;</span> <span class="fn">std::endl</span>;
+    <span class="kw">return</span> <span class="num">1</span>;
+}
+
+<span class="cmt">// 3. Pronto para usar!</span>
+<span class="fn">std::cout</span> <span class="op">&lt;&lt;</span> <span class="str">"✅ MemoryManager initialized with "</span> <span class="op">&lt;&lt;</span> gb <span class="op">&lt;&lt;</span> <span class="str">"GB"</span> <span class="op">&lt;&lt;</span> <span class="fn">std::endl</span>;</code></pre>
+
+    <h3>2️⃣ Integrar o LerConfig</h3>
+    <pre><code><span class="cmt">// main.cpp (continuação)</span>
+
+<span class="kw">#include</span> <span class="str">"../../lerconfig/include/config.hpp"</span>
+
+<span class="cmt">// 4. Injeta o MemoryManager no Config (ANTES de carregar!)</span>
+<span class="type">LerConfig::Config</span>::<span class="fn">setMemoryManager</span>(<span class="op">&amp;</span>g_memory_manager);
+
+<span class="cmt">// 5. Carrega as configurações</span>
+<span class="type">LerConfig::Config</span><span class="op">&amp;</span> config = <span class="type">LerConfig::Config</span>::<span class="fn">getInstance</span>();
+<span class="kw">if</span> (<span class="op">!</span>config.<span class="fn">carregar</span>(<span class="str">"/etc/memorandos/config.conf"</span>)) {
+    <span class="fn">std::cerr</span> <span class="op">&lt;&lt;</span> <span class="str">"❌ Falha ao carregar configurações!"</span> <span class="op">&lt;&lt;</span> <span class="fn">std::endl</span>;
+    g_memory_manager.<span class="fn">shutdown</span>();
+    <span class="kw">return</span> <span class="num">1</span>;
+}
+
+<span class="cmt">// 6. Lê as configurações</span>
+<span class="kw">const</span> <span class="type">char</span><span class="op">*</span> mensagem = config.<span class="fn">getString</span>(<span class="str">"boas_vindas"</span>, <span class="str">"Padrão"</span>);
+<span class="type">int</span> memoria = config.<span class="fn">getInt</span>(<span class="str">"memory"</span>, <span class="num">20</span>);
+<span class="type">bool</span> auth = config.<span class="fn">getBool</span>(<span class="str">"auth_enabled"</span>, <span class="kw">false</span>);
+
+<span class="fn">std::cout</span> <span class="op">&lt;&lt;</span> <span class="str">"💬 "</span> <span class="op">&lt;&lt;</span> mensagem <span class="op">&lt;&lt;</span> <span class="fn">std::endl</span>;
+<span class="fn">std::cout</span> <span class="op">&lt;&lt;</span> <span class="str">"📊 Memória configurada: "</span> <span class="op">&lt;&lt;</span> memoria <span class="op">&lt;&lt;</span> <span class="str">" GB"</span> <span class="op">&lt;&lt;</span> <span class="fn">std::endl</span>;</code></pre>
+
+    <h3>3️⃣ Alocar Memória para um Serviço/Thread</h3>
+    <pre><code><span class="cmt">// Em qualquer outro .cpp que precise de memória</span>
+
+<span class="kw">#include</span> <span class="str">"../../memorymanager/include/memory_manager_thread.hpp"</span>
+
+<span class="cmt">// Referência para o gerenciador global</span>
+<span class="kw">extern</span> <span class="type">memorymanager::MemoryManagerThread</span> g_memory_manager;
+
+<span class="type">void</span> <span class="fn">meuServico</span>() {
+    <span class="type">uint64_t</span> thread_id = <span class="num">12345</span>;      <span class="cmt">// ID único da thread</span>
+    <span class="type">uint32_t</span> megabytes = <span class="num">100</span>;        <span class="cmt">// 100 MB</span>
+    <span class="type">uint32_t</span> start_block = <span class="num">0</span>;
+    <span class="type">void</span><span class="op">*</span> start_addr = <span class="kw">nullptr</span>;
+    <span class="type">void</span><span class="op">*</span> end_addr = <span class="kw">nullptr</span>;
+    <span class="type">char</span> error_msg[<span class="num">256</span>] = {<span class="num">0</span>};
+    
+    <span class="cmt">// ALOCA</span>
+    <span class="kw">if</span> (g_memory_manager.<span class="fn">allocate</span>(thread_id, megabytes, 
+                                   start_block, start_addr, end_addr, 
+                                   error_msg)) {
+        <span class="fn">std::cout</span> <span class="op">&lt;&lt;</span> <span class="str">"✅ Alocado "</span> <span class="op">&lt;&lt;</span> megabytes <span class="op">&lt;&lt;</span> <span class="str">"MB no bloco "</span> 
+                  <span class="op">&lt;&lt;</span> start_block <span class="op">&lt;&lt;</span> <span class="fn">std::endl</span>;
+        
+        <span class="cmt">// Usa a memória...</span>
+        <span class="type">uint8_t</span><span class="op">*</span> data = <span class="kw">static_cast</span><span class="op">&lt;</span><span class="type">uint8_t</span><span class="op">*&gt;</span>(start_addr);
+        <span class="type">size_t</span> size = <span class="kw">static_cast</span><span class="op">&lt;</span><span class="type">size_t</span><span class="op">&gt;</span>(megabytes <span class="op">*</span> <span class="num">1024</span> <span class="op">*</span> <span class="num">1024</span>);
+        <span class="fn">std::memset</span>(data, <span class="num">0</span>, size);  <span class="cmt">// Zera a memória</span>
+        
+        <span class="cmt">// LIBERA</span>
+        <span class="kw">if</span> (g_memory_manager.<span class="fn">free</span>(thread_id, error_msg)) {
+            <span class="fn">std::cout</span> <span class="op">&lt;&lt;</span> <span class="str">"✅ Memória liberada"</span> <span class="op">&lt;&lt;</span> <span class="fn">std::endl</span>;
+        } <span class="kw">else</span> {
+            <span class="fn">std::cerr</span> <span class="op">&lt;&lt;</span> <span class="str">"❌ Falha ao liberar: "</span> <span class="op">&lt;&lt;</span> error_msg <span class="op">&lt;&lt;</span> <span class="fn">std::endl</span>;
+        }
+    } <span class="kw">else</span> {
+        <span class="fn">std::cerr</span> <span class="op">&lt;&lt;</span> <span class="str">"❌ Falha ao alocar: "</span> <span class="op">&lt;&lt;</span> error_msg <span class="op">&lt;&lt;</span> <span class="fn">std::endl</span>;
+    }
+}</code></pre>
+
+    <h3>4️⃣ Shutdown Limpo</h3>
+    <pre><code><span class="cmt">// main.cpp (antes de encerrar)</span>
+
+<span class="cmt">// 1. Remove a referência do Config para o MemoryManager</span>
+<span class="type">LerConfig::Config</span>::<span class="fn">setMemoryManager</span>(<span class="kw">nullptr</span>);
+
+<span class="cmt">// 2. Shutdown do MemoryManager</span>
+g_memory_manager.<span class="fn">shutdown</span>();
+<span class="fn">std::cout</span> <span class="op">&lt;&lt;</span> <span class="str">"✅ MemoryManager shutdown completo"</span> <span class="op">&lt;&lt;</span> <span class="fn">std::endl</span>;
+
+<span class="cmt">// 3. Return</span>
+<span class="kw">return</span> <span class="num">0</span>;</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- CHECKLIST -->
+    <!-- ============================================================ -->
+    <h2>📋 Checklist de Integração</h2>
+    <table>
+        <thead>
+            <tr><th>#</th><th>Passo</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>✅</td><td>Incluir <code>memory_manager_thread.hpp</code></td><td><span class="tag tag-green">Feito</span></td></tr>
+            <tr><td>✅</td><td>Criar instância global do <code>MemoryManagerThread</code></td><td><span class="tag tag-green">Feito</span></td></tr>
+            <tr><td>✅</td><td>Chamar <code>init(gb)</code> com 1-30 GB</td><td><span class="tag tag-green">Feito</span></td></tr>
+            <tr><td>✅</td><td>Incluir <code>config.hpp</code></td><td><span class="tag tag-green">Feito</span></td></tr>
+            <tr><td>✅</td><td>Chamar <code>Config::setMemoryManager(&amp;mm)</code></td><td><span class="tag tag-green">Feito</span></td></tr>
+            <tr><td>✅</td><td>Chamar <code>config.carregar(CONFIG_FILE)</code></td><td><span class="tag tag-green">Feito</span></td></tr>
+            <tr><td>✅</td><td>Usar <code>allocate()</code>/<code>free()</code> para memória</td><td><span class="tag tag-green">Feito</span></td></tr>
+            <tr><td>✅</td><td>Chamar <code>Config::setMemoryManager(nullptr)</code> no shutdown</td><td><span class="tag tag-green">Feito</span></td></tr>
+            <tr><td>✅</td><td>Chamar <code>g_memory_manager.shutdown()</code> no shutdown</td><td><span class="tag tag-green">Feito</span></td></tr>
+        </tbody>
+    </table>
+
+    <!-- ============================================================ -->
+    <!-- REGRAS DE OURO -->
+    <!-- ============================================================ -->
+    <h2>⚠️ Regras de Ouro (Nunca Quebrar)</h2>
+    <div class="components-grid">
+        <div class="component-card box-danger">
+            <div class="title">1. Instância GLOBAL</div>
+            <div class="desc"><code>static memorymanager::MemoryManagerThread g_memory_manager;</code> na stack</div>
+        </div>
+        <div class="component-card box-warning">
+            <div class="title">2. Injeta antes de carregar</div>
+            <div class="desc"><code>setMemoryManager()</code> ANTES de <code>carregar()</code></div>
+        </div>
+        <div class="component-card box-danger">
+            <div class="title">3. Remove antes do shutdown</div>
+            <div class="desc"><code>setMemoryManager(nullptr)</code> ANTES de <code>shutdown()</code></div>
+        </div>
+        <div class="component-card box-danger">
+            <div class="title">4. Nunca acesse Config pós-shutdown</div>
+            <div class="desc">O Config usa memória do MM</div>
+        </div>
+        <div class="component-card box-warning">
+            <div class="title">5. Thread ID único por alocação</div>
+            <div class="desc">Cada thread só pode ter 1 empréstimo ativo</div>
+        </div>
+        <div class="component-card box-danger">
+            <div class="title">6. Nunca use heap (<code>new</code>/<code>malloc</code>)</div>
+            <div class="desc">Use <code>allocate()</code> do MM</div>
+        </div>
+        <div class="component-card box-warning">
+            <div class="title">7. Não use stack para buffers grandes</div>
+            <div class="desc">Use <code>allocate()</code> do MM</div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- ARQUIVO DE CONFIG -->
+    <!-- ============================================================ -->
+    <h2>📁 Exemplo de Arquivo de Configuração</h2>
+    <pre><code><span class="cmt"># /etc/memorandos/config.conf</span>
+ragnarok = desenvolvimento
+memory = 20
+workeruser = andre
+db_host = localhost
+db_port = 5432
+db_name = memorandos
+db_user = postgres
+db_password = 
+api_prefix = /api/v1
+auth_enabled = true
+rate_limit = 100
+boas_vindas = Sistema de Controle de Memorandos versão 0.001</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- LENDO CONFIG -->
+    <!-- ============================================================ -->
+    <h2>🔧 Como Ler uma Configuração</h2>
+    <pre><code><span class="cmt">// Em qualquer lugar que tenha a instância do Config</span>
+<span class="type">LerConfig::Config</span><span class="op">&amp;</span> config = <span class="type">LerConfig::Config</span>::<span class="fn">getInstance</span>();
+
+<span class="cmt">// String</span>
+<span class="kw">const</span> <span class="type">char</span><span class="op">*</span> host = config.<span class="fn">getString</span>(<span class="str">"db_host"</span>, <span class="str">"localhost"</span>);
+
+<span class="cmt">// Inteiro</span>
+<span class="type">int</span> port = config.<span class="fn">getInt</span>(<span class="str">"db_port"</span>, <span class="num">5432</span>);
+
+<span class="cmt">// Booleano</span>
+<span class="type">bool</span> auth = config.<span class="fn">getBool</span>(<span class="str">"auth_enabled"</span>, <span class="kw">false</span>);
+
+<span class="cmt">// Size_t</span>
+<span class="type">size_t</span> limit = config.<span class="fn">getSize</span>(<span class="str">"rate_limit"</span>, <span class="num">100</span>);
+
+<span class="cmt">// Float</span>
+<span class="type">float</span> version = config.<span class="fn">getFloat</span>(<span class="str">"version"</span>, <span class="num">1.0f</span>);
+
+<span class="cmt">// Verifica se existe</span>
+<span class="kw">if</span> (config.<span class="fn">existe</span>(<span class="str">"db_password"</span>)) {
+    <span class="cmt">// Existe</span>
+}
+
+<span class="cmt">// Lista todas as configurações</span>
+config.<span class="fn">listarTodas</span>();</code></pre>
+
+    <!-- ============================================================ -->
+    <!-- ARQUITETURA -->
+    <!-- ============================================================ -->
+    <h2>🎯 Resumo para Arquitetos</h2>
+    <div class="ascii-box">
+┌────────────────────────────────────────────────────────────┐
+│                    ARQUITETURA DO SISTEMA                  │
+├────────────────────────────────────────────────────────────┤
+│                                                            │
+│  main.cpp                                                  │
+│  ├── static MemoryManagerThread g_memory_manager          │
+│  ├── g_memory_manager.init(20)                            │
+│  ├── Config::setMemoryManager(&g_memory_manager)          │
+│  ├── Config::getInstance().carregar()                     │
+│  ├── ... SISTEMA RODANDO ...                             │
+│  ├── Config::setMemoryManager(nullptr)                    │
+│  └── g_memory_manager.shutdown()                          │
+│                                                            │
+│  OUTROS .CPP                                               │
+│  ├── extern MemoryManagerThread g_memory_manager          │
+│  ├── g_memory_manager.allocate(thread_id, mb, ...)       │
+│  ├── ... USA A MEMÓRIA ...                               │
+│  └── g_memory_manager.free(thread_id, ...)               │
+│                                                            │
+│  LerConfig (Singleton)                                     │
+│  ├── UMA ÚNICA alocação no MM                             │
+│  ├── thread_local buffer (512 bytes)                     │
+│  ├── getString(), getInt(), getBool()                     │
+│  └── Zero heap allocation                                 │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- COMPONENTES -->
+    <!-- ============================================================ -->
+    <h2>📊 Componentes do Sistema</h2>
+    <div class="components-grid">
+        <div class="component-card">
+            <div class="title">📦 MemoryManager</div>
+            <div class="path">memorymanager/</div>
+            <div class="desc">
+                <strong>Capacidade:</strong> 20-30GB<br>
+                <strong>Blocos:</strong> 20480-30720 (1MB)<br>
+                <strong>Bitmap:</strong> 4KB (stack)<br>
+                <strong>LoanTable:</strong> 24KB (stack)<br>
+                <strong>Thread-safe:</strong> ✅ Mutex
+            </div>
+        </div>
+        <div class="component-card">
+            <div class="title">🧵 Thread Principal</div>
+            <div class="path">memory_manager_thread.cpp</div>
+            <div class="desc">
+                <strong>RequestQueue:</strong> 64 requisições<br>
+                <strong>Processamento:</strong> Assíncrono<br>
+                <strong>Timeout:</strong> 5 segundos<br>
+                <strong>Loop:</strong> Infinito até Ctrl+C
+            </div>
+        </div>
+        <div class="component-card">
+            <div class="title">📖 LerConfig</div>
+            <div class="path">lerconfig/</div>
+            <div class="desc">
+                <strong>Tipo:</strong> Singleton<br>
+                <strong>Alocação:</strong> Única no MM<br>
+                <strong>Buffer:</strong> thread_local (512B)<br>
+                <strong>Heap:</strong> Zero allocation
+            </div>
+        </div>
+        <div class="component-card">
+            <div class="title">⚡ Main</div>
+            <div class="path">main.cpp</div>
+            <div class="desc">
+                <strong>Root check:</strong> ✅<br>
+                <strong>Args:</strong> --memory=XXGb<br>
+                <strong>Config dir:</strong> /etc/memorandos/<br>
+                <strong>Drop privileges:</strong> ✅<br>
+                <strong>Shutdown:</strong> Limpo (sem segfault)
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- CONCLUSÃO -->
+    <!-- ============================================================ -->
+    <hr>
+
+    <h2>🏁 Conclusão</h2>
+    <div class="box box-success">
+        <div class="box-title">✅ A BASE ESTÁ PRONTA!</div>
+        <ul>
+            <li>✅ MemoryManager com mmap (20-30GB)</li>
+            <li>✅ Thread-safe com RequestQueue</li>
+            <li>✅ LerConfig com zero heap</li>
+            <li>✅ Shutdown limpo (sem segfault)</li>
+            <li>✅ Interface simples e clara</li>
+            <li>✅ Pronto para integrar qualquer serviço</li>
+        </ul>
+        <p style="margin-top: 1rem; font-size: 1.2rem; color: #f0e6d0;">
+            🚀 Agora é só construir em cima!
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAGS GITHUB -->
+    <!-- ============================================================ -->
+    <hr>
+
+    <h2>📝 Tags para o GitHub</h2>
+    <div style="background: #0d1117; border: 1px solid #30363d; border-radius: 8px; padding: 1.2rem;">
+        <pre style="background: transparent; border: none; padding: 0; margin: 0;"><code><span style="color: #f0e6d0; font-weight: bold;">v1.0.0 - Base Estável</span>
+<span style="color: #8b949e;">- MemoryManager com mmap</span>
+<span style="color: #8b949e;">- LerConfig integrado</span>
+<span style="color: #8b949e;">- Shutdown seguro</span>
+<span style="color: #8b949e;">- Zero heap allocation</span>
+<span style="color: #8b949e;">- Thread-safe</span></code></pre>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- FOOTER -->
+    <!-- ============================================================ -->
+    <hr>
+
+    <div style="text-align: center; color: #8b949e; font-size: 0.9rem; padding-top: 1rem;">
+        <p>
+            📅 Receita documentada em: <strong>2026-08-09</strong><br>
+            🚀 Próxima versão: <strong>v1.1.0 - Orquestrador</strong>
+        </p>
+        <p style="margin-top: 0.5rem;">
+            <span class="emoji">🍰</span> Bom apetite! <span class="emoji">🚀</span>
+        </p>
+    </div>
+
+</div>
+</body>
+</html>

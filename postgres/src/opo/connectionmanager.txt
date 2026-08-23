@@ -1,0 +1,473 @@
+#include "connectionmanager.hpp"
+#include <fstream>
+#include <cstring>
+#include <unistd.h>
+#include <poll.h>
+#include <expected>
+#include <stop_token>
+
+static constexpr size_t DEFAULT_BUFFER_SIZE = 8192;
+
+// Construtor com injeção do MemoryManager
+ConnectionManager::ConnectionManager(MemoryManagerV2* mm)
+    : memoryManager(mm), nextConnectionId(1) {}
+
+ConnectionManager::~ConnectionManager() {
+    shutdownAll();
+}
+
+// Alocação via MemoryManager (arena), não heap do sistema
+char* ConnectionManager::allocateBuffer() {
+    if (!memoryManager) return nullptr;
+    
+    char errorBuffer[256];
+    void* ptr = memoryManager->alocarSlot(DEFAULT_BUFFER_SIZE, 0, errorBuffer, sizeof(errorBuffer));
+    return static_cast<char*>(ptr);
+}
+
+// Liberação via MemoryManager (arena), não heap do sistema
+void ConnectionManager::freeBuffer(char* buffer) {
+    if (memoryManager && buffer) {
+        char errorBuffer[256];
+        memoryManager->liberarSlot(buffer, errorBuffer, sizeof(errorBuffer));
+    }
+}
+
+// Alocação de objeto na arena (placement new)
+template<typename T, typename... Args>
+T* allocateObject(MemoryManagerV2* mm, Args&&... args) {
+    char errorBuffer[256];
+    void* ptr = mm->alocarSlot(sizeof(T), 0, errorBuffer, sizeof(errorBuffer));
+    if (!ptr) return nullptr;
+    return new(ptr) T(std::forward<Args>(args)...);
+}
+
+// Liberação de objeto da arena (destrutor + desaloca)
+template<typename T>
+void deallocateObject(MemoryManagerV2* mm, T* obj) {
+    if (obj) {
+        obj->~T();
+        char errorBuffer[256];
+        mm->liberarSlot(obj, errorBuffer, sizeof(errorBuffer));
+    }
+}
+
+// C++23: usando std::expected para retorno
+std::expected<int, int> ConnectionManager::createRawConnection() {
+    int clientPort = config.clientStartPort + (nextConnectionId - 1);
+    
+    char* buffer = allocateBuffer();
+    if (!buffer) {
+        return std::unexpected(ENOMEM);
+    }
+    
+    // Aloca RawKernel na arena, não no heap do sistema
+    RawKernel* kernel = allocateObject<RawKernel>(memoryManager, buffer, config.bufferPerConnection);
+    if (!kernel) {
+        freeBuffer(buffer);
+        return std::unexpected(ENOMEM);
+    }
+    
+    int err;
+    if (!kernel->initTCP(config.pgSocketPath, clientPort, err)) {
+        deallocateObject(memoryManager, kernel);
+        freeBuffer(buffer);
+        return std::unexpected(err);
+    }
+    
+    int connId = nextConnectionId++;
+    auto handle = std::make_unique<ConnectionHandle>(connId);
+    handle->kernel = kernel;
+    handle->isActive.store(true);
+    handle->pgSocketPath = config.pgSocketPath;
+    handle->clientPort = clientPort;
+    
+    {
+        std::scoped_lock lock(managerMutex);  // C++17, melhor que lock_guard
+        connections[connId] = std::move(handle);
+        connectionBuffers[connId] = buffer;
+    }
+    
+    startMonitoring(connId);
+    
+    return connId;
+}
+
+// C++23: usando std::expected
+std::expected<void, int> ConnectionManager::loadConfig(const std::string& configPath) {
+    std::ifstream file(configPath);
+    if (!file.is_open()) {
+        return std::unexpected(ENOENT);
+    }
+
+    std::string line;
+    while (std::getline(file, line)) {
+        size_t start = line.find_first_not_of(" \t\r\n");
+        if (start == std::string::npos) continue;
+        
+        size_t end = line.find_last_not_of(" \t\r\n");
+        line = line.substr(start, end - start + 1);
+        
+        if (line.empty() || line[0] == '#') continue;
+        
+        size_t eqPos = line.find('=');
+        if (eqPos == std::string::npos) continue;
+        
+        std::string key = line.substr(0, eqPos);
+        std::string value = line.substr(eqPos + 1);
+        
+        start = key.find_first_not_of(" \t");
+        end = key.find_last_not_of(" \t");
+        if (start != std::string::npos && end != std::string::npos) {
+            key = key.substr(start, end - start + 1);
+        }
+        
+        start = value.find_first_not_of(" \t");
+        end = value.find_last_not_of(" \t");
+        if (start != std::string::npos && end != std::string::npos) {
+            value = value.substr(start, end - start + 1);
+        }
+        
+        if (!value.empty() && value.front() == '"' && value.back() == '"') {
+            value = value.substr(1, value.length() - 2);
+        }
+        
+        if (key == "total_memory_mb") {
+            char* endPtr = nullptr;
+            unsigned long val = strtoul(value.c_str(), &endPtr, 10);
+            if (endPtr == nullptr || *endPtr != '\0' || val == 0) {
+                return std::unexpected(EINVAL);
+            }
+            config.totalMemoryBytes = val * 1024 * 1024;
+        } 
+        else if (key == "buffer_per_connection_kb") {
+            char* endPtr = nullptr;
+            unsigned long val = strtoul(value.c_str(), &endPtr, 10);
+            if (endPtr == nullptr || *endPtr != '\0' || val == 0) {
+                return std::unexpected(EINVAL);
+            }
+            config.bufferPerConnection = val * 1024;
+        } 
+        else if (key == "max_connections") {
+            char* endPtr = nullptr;
+            long val = strtol(value.c_str(), &endPtr, 10);
+            if (endPtr == nullptr || *endPtr != '\0' || val <= 0 || val > 1000) {
+                return std::unexpected(EINVAL);
+            }
+            config.maxConnections = static_cast<int>(val);
+        } 
+        else if (key == "pg_socket_path") {
+            if (value.empty()) {
+                return std::unexpected(EINVAL);
+            }
+            config.pgSocketPath = value;
+        } 
+        else if (key == "client_port_start") {
+            char* endPtr = nullptr;
+            long val = strtol(value.c_str(), &endPtr, 10);
+            if (endPtr == nullptr || *endPtr != '\0' || val <= 0 || val >= 65535) {
+                return std::unexpected(EINVAL);
+            }
+            config.clientStartPort = static_cast<int>(val);
+        } 
+        else if (key == "keepalive_seconds") {
+            char* endPtr = nullptr;
+            long val = strtol(value.c_str(), &endPtr, 10);
+            if (endPtr == nullptr || *endPtr != '\0' || val <= 0) {
+                return std::unexpected(EINVAL);
+            }
+            config.keepaliveSeconds = static_cast<int>(val);
+        } 
+        else if (key == "reconnect_delay_ms") {
+            char* endPtr = nullptr;
+            long val = strtol(value.c_str(), &endPtr, 10);
+            if (endPtr == nullptr || *endPtr != '\0' || val <= 0) {
+                return std::unexpected(EINVAL);
+            }
+            config.reconnectDelayMs = static_cast<int>(val);
+        }
+        else {
+            return std::unexpected(EINVAL);
+        }
+    }
+    
+    file.close();
+    
+    if (config.bufferPerConnection < 1024) {
+        return std::unexpected(EINVAL);
+    }
+    
+    if (config.maxConnections < 1 || config.maxConnections > 1000) {
+        return std::unexpected(EINVAL);
+    }
+    
+    return {};
+}
+
+std::expected<void, int> ConnectionManager::init(const std::string& configPath) {
+    if (!memoryManager) {
+        return std::unexpected(EINVAL);
+    }
+    
+    // Carrega configuração - SEM FALLBACK
+    auto loadResult = loadConfig(configPath);
+    if (!loadResult) {
+        return std::unexpected(loadResult.error());
+    }
+    
+    // Inicializa MemoryManager
+    char errorBuffer[256];
+    if (!memoryManager->inicializarAmbiente(config.totalMemoryBytes, errorBuffer, sizeof(errorBuffer))) {
+        return std::unexpected(ENOMEM);
+    }
+    
+    return {};
+}
+
+// Versão compatível com interface antiga (bool + outErrno)
+bool ConnectionManager::init(const std::string& configPath, int& outErrno) {
+    auto result = init(configPath);
+    if (!result) {
+        outErrno = result.error();
+        return false;
+    }
+    return true;
+}
+
+void ConnectionManager::startMonitoring(int connectionId) {
+    auto it = connections.find(connectionId);
+    if (it == connections.end()) return;
+    
+    ConnectionHandle* handle = it->second.get();
+    
+    // Usando std::jthread (C++20) com stop_token
+    handle->monitorThread = std::make_unique<std::jthread>(
+        [this, connectionId](std::stop_token st) {
+            monitorLoop(connectionId, st);
+        }
+    );
+}
+
+void ConnectionManager::monitorLoop(int connectionId, std::stop_token st) {
+    auto it = connections.find(connectionId);
+    if (it == connections.end()) return;
+    
+    ConnectionHandle* handle = it->second.get();
+    
+    while (!st.stop_requested() && handle->isActive.load()) {
+        // Espera com verificação de stop_token
+        for (int i = 0; i < config.keepaliveSeconds && !st.stop_requested() && handle->isActive.load(); ++i) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+        
+        if (st.stop_requested() || !handle->isActive.load()) break;
+        
+        bool alive = false;
+        if (handle->kernel) {
+            alive = handle->kernel->isAlive();
+        }
+        
+        if (!alive && handle->isActive.load()) {
+            handle->isActive.store(false);
+            
+            if (onConnectionLostCallback) {
+                onConnectionLostCallback(connectionId);
+            }
+            
+            // Espera com verificação de stop_token
+            auto start = std::chrono::steady_clock::now();
+            while (!st.stop_requested() && 
+                   std::chrono::duration_cast<std::chrono::milliseconds>(
+                       std::chrono::steady_clock::now() - start).count() < config.reconnectDelayMs) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            
+            if (st.stop_requested()) break;
+            
+            int err;
+            if (reconnectConnection(connectionId, err)) {
+                handle->isActive.store(true);
+                if (onConnectionReadyCallback) {
+                    onConnectionReadyCallback(connectionId);
+                }
+            }
+        }
+    }
+}
+
+bool ConnectionManager::reconnectConnection(int connectionId, int& outErrno) {
+    std::scoped_lock lock(managerMutex);
+    
+    auto it = connections.find(connectionId);
+    if (it == connections.end()) {
+        outErrno = ENOENT;
+        return false;
+    }
+    
+    ConnectionHandle* handle = it->second.get();
+    
+    if (handle->kernel) {
+        handle->kernel->shutdown();
+        deallocateObject(memoryManager, handle->kernel);
+        handle->kernel = nullptr;
+    }
+    
+    auto bufferIt = connectionBuffers.find(connectionId);
+    if (bufferIt == connectionBuffers.end()) {
+        outErrno = ENOENT;
+        return false;
+    }
+    
+    // Aloca novo kernel na arena
+    handle->kernel = allocateObject<RawKernel>(memoryManager, bufferIt->second, config.bufferPerConnection);
+    if (!handle->kernel) {
+        outErrno = ENOMEM;
+        return false;
+    }
+    
+    if (!handle->kernel->initTCP(handle->pgSocketPath, handle->clientPort, outErrno)) {
+        deallocateObject(memoryManager, handle->kernel);
+        handle->kernel = nullptr;
+        return false;
+    }
+    
+    handle->isActive.store(true);
+    return true;
+}
+
+std::vector<int> ConnectionManager::bringUpConnections(int count, int& outErrno) {
+    std::scoped_lock lock(managerMutex);
+    
+    std::vector<int> ids;
+    
+    if (count > config.maxConnections) {
+        outErrno = EINVAL;
+        return ids;
+    }
+    
+    if (count <= 0) {
+        outErrno = EINVAL;
+        return ids;
+    }
+    
+    for (int i = 0; i < count; ++i) {
+        auto result = createRawConnection();
+        if (!result) {
+            outErrno = result.error();
+            for (int existingId : ids) {
+                bringDownConnection(existingId, outErrno);
+            }
+            return {};
+        }
+        ids.push_back(*result);
+    }
+    
+    return ids;
+}
+
+bool ConnectionManager::bringDownConnection(int connectionId, int& outErrno) {
+    std::scoped_lock lock(managerMutex);
+    
+    auto it = connections.find(connectionId);
+    if (it == connections.end()) {
+        outErrno = ENOENT;
+        return false;
+    }
+    
+    ConnectionHandle* handle = it->second.get();
+    handle->isActive.store(false);
+    
+    // jthread com stop_token - join é automático no destruidor
+    if (handle->monitorThread && handle->monitorThread->joinable()) {
+        handle->monitorThread->request_stop();  // Sinaliza para parar
+        handle->monitorThread->join();
+    }
+    
+    if (handle->kernel) {
+        handle->kernel->shutdown();
+        deallocateObject(memoryManager, handle->kernel);
+        handle->kernel = nullptr;
+    }
+    
+    auto bufferIt = connectionBuffers.find(connectionId);
+    if (bufferIt != connectionBuffers.end()) {
+        freeBuffer(bufferIt->second);
+        connectionBuffers.erase(bufferIt);
+    }
+    
+    connections.erase(it);
+    
+    return true;
+}
+
+bool ConnectionManager::isConnectionAlive(int connectionId) const {
+    std::scoped_lock lock(managerMutex);
+    
+    auto it = connections.find(connectionId);
+    if (it == connections.end()) {
+        return false;
+    }
+    
+    return it->second->isActive.load();
+}
+
+std::vector<int> ConnectionManager::getActiveConnectionIds() const {
+    std::scoped_lock lock(managerMutex);
+    
+    std::vector<int> ids;
+    ids.reserve(connections.size());  // Pré-aloca para evitar realocações
+    for (const auto& pair : connections) {
+        if (pair.second->isActive.load()) {
+            ids.push_back(pair.first);
+        }
+    }
+    return ids;
+}
+
+RawKernel* ConnectionManager::getKernel(int connectionId) const {
+    std::scoped_lock lock(managerMutex);
+    
+    auto it = connections.find(connectionId);
+    if (it == connections.end()) {
+        return nullptr;
+    }
+    
+    return it->second->kernel;
+}
+
+void ConnectionManager::onConnectionReady(std::function<void(int)> callback) {
+    onConnectionReadyCallback = callback;
+}
+
+void ConnectionManager::onConnectionLost(std::function<void(int)> callback) {
+    onConnectionLostCallback = callback;
+}
+
+void ConnectionManager::shutdownAll() {
+    std::scoped_lock lock(managerMutex);
+    
+    for (auto& pair : connections) {
+        ConnectionHandle* handle = pair.second.get();
+        handle->isActive.store(false);
+        
+        if (handle->monitorThread) {
+            handle->monitorThread->request_stop();  // Sinaliza stop_token
+            if (handle->monitorThread->joinable()) {
+                handle->monitorThread->join();
+            }
+        }
+        
+        if (handle->kernel) {
+            handle->kernel->shutdown();
+            deallocateObject(memoryManager, handle->kernel);
+            handle->kernel = nullptr;
+        }
+    }
+    
+    for (auto& pair : connectionBuffers) {
+        freeBuffer(pair.second);
+    }
+    connectionBuffers.clear();
+    
+    connections.clear();
+}

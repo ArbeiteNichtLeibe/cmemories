@@ -1,0 +1,27 @@
+BLOCK_ADDRES_calculator is revised
+# Block Allocator - Nota Técnica
+
+## Exceção Controlada: Bitmap na Stack
+
+### Justificativa
+O BlockAllocator foge da regra geral "Prioridade Absoluta à Arena"
+por razões técnicas sólidas:
+
+1. **Tamanho Fixo**: O bitmap tem 4KB (nunca muda)
+2. **Performance**: Acesso à stack é mais rápido que heap
+3. **Segurança**: Zero alocações dinâmicas (não pode falhar)
+4. **Espaço**: 4KB na stack é irrelevante (limite típico: 8MB)
+
+### Decisão Técnica
+- **Aprovado**: 2024
+- **Revisado**: Equipe de Arquitetura
+- **Documentado**: block_allocator.hpp e block_allocator.cpp
+
+### Se Precisar de Mais Espaço
+Ajuste a constante `MAX_BLOCKS`:
+- 30GB → 32768 blocos (4KB bitmap)
+- 60GB → 65536 blocos (8KB bitmap)
+- 120GB → 131072 blocos (16KB bitmap)
+
+### Referência
+Normativas do Projeto - Seção "Gerenciamento de Memória"

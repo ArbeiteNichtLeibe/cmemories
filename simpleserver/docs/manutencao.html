@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 Memorandos - Guia de Arquitetura e Implementação</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0d1117;
+            color: #e6edf3;
+            padding: 2rem;
+            line-height: 1.7;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #161b22;
+            padding: 2.5rem;
+            border-radius: 16px;
+            border: 1px solid #30363d;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        }
+        h1, h2, h3, h4 {
+            color: #f0e6d0;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #21262d;
+            padding-bottom: 0.4rem;
+        }
+        h1 { font-size: 2.2rem; border-bottom: 2px solid #30363d; }
+        h2 { font-size: 1.8rem; }
+        h3 { font-size: 1.3rem; border-bottom: none; }
+        p, li { color: #c9d1d9; }
+        ul, ol { margin: 0.8rem 0 1.2rem 1.8rem; }
+        li { margin-bottom: 0.4rem; }
+        code {
+            font-family: 'Consolas', monospace;
+            background: #0d1117;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: #f0e6d0;
+            border: 1px solid #30363d;
+        }
+        pre {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.2rem;
+            overflow-x: auto;
+            margin: 1.2rem 0;
+            font-size: 0.9rem;
+        }
+        pre code {
+            background: transparent;
+            border: none;
+            padding: 0;
+            color: #e6edf3;
+        }
+        .ascii-box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: 'Consolas', monospace;
+            font-size: 0.85rem;
+            color: #8b949e;
+            white-space: pre;
+            overflow-x: auto;
+            line-height: 1.4;
+            margin: 1.2rem 0;
+        }
+        .tag {
+            display: inline-block;
+            padding: 0.15rem 0.7rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-right: 0.3rem;
+        }
+        .tag-green { background: #238636; color: #fff; }
+        .tag-yellow { background: #d29922; color: #fff; }
+        .tag-blue { background: #1f6feb; color: #fff; }
+        .tag-red { background: #da3633; color: #fff; }
+        .tag-gray { background: #30363d; color: #c9d1d9; }
+        .box {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.2rem;
+            margin: 1.2rem 0;
+        }
+        .box-success { border-left: 4px solid #238636; }
+        .box-warning { border-left: 4px solid #d29922; }
+        .box-danger { border-left: 4px solid #da3633; }
+        .box-info { border-left: 4px solid #58a6ff; }
+        .box-title { font-weight: 600; font-size: 1.1rem; margin-bottom: 0.4rem; color: #f0e6d0; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.2rem 0;
+            background: #0d1117;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th {
+            background: #21262d;
+            color: #f0e6d0;
+            padding: 0.6rem 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid #21262d;
+            color: #c9d1d9;
+        }
+        tr:hover td { background: #1c2128; }
+        hr { border: none; border-top: 1px solid #21262d; margin: 2rem 0; }
+        .footer { text-align: center; color: #8b949e; font-size: 0.9rem; margin-top: 2rem; }
+        .emoji { font-size: 1.2rem; }
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            .container { padding: 1.2rem; }
+            h1 { font-size: 1.6rem; }
+        }
+        .note {
+            background: #1c2128;
+            border-radius: 6px;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            border-left: 3px solid #d29922;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <h1>🧠 Memorandos – Guia de Arquitetura e Implementação</h1>
+    <p style="color: #8b949e; font-size: 1.1rem;">
+        Documento vivo que descreve a estrutura, as decisões de projeto e como estender o sistema.
+    </p>
+    <p>
+        <span class="tag tag-green">v2.0</span>
+        <span class="tag tag-blue">ESTÁVEL</span>
+        <span style="color: #8b949e; margin-left: 0.5rem;">📅 2026-08-21</span>
+    </p>
+
+    <hr>
+
+    <!-- ============================================================ -->
+    <h2>🎯 Filosofia do Projeto</h2>
+    <div class="box box-info">
+        <div class="box-title">"Funciona ou Quebra"</div>
+        <p>
+            O sistema não tolera inicializações parciais. Se qualquer componente crítico falhar,
+            o processo inteiro é encerrado. Isso garante que nunca haja um estado inconsistente
+            ou "meio funcionando". Cada módulo deve ser <strong>autocontido</strong> e
+            <strong>verificar suas dependências</strong> na inicialização.
+        </p>
+        <ul>
+            <li><strong>Zero heap padrão</strong> – toda memória é alocada na <code>MemoryManagerThread</code> (arena).</li>
+            <li><strong>Zero exceções</strong> – funções retornam <code>bool</code> e populam <code>char* outError</code>.</li>
+            <li><strong>Não há fallbacks</strong> – se uma configuração obrigatória falta, o sistema para.</li>
+            <li><strong>RAII customizado</strong> – para arquivos e locks, mas memória é gerenciada via arena.</li>
+        </ul>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>🏗️ Visão Geral dos Componentes</h2>
+    <div class="ascii-box">
+┌─────────────────────────────────────────────────────────────────────┐
+│                         SISTEMA MEMORANDOS                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │                     main-principal.cpp                       │  │
+│  │  - Inicializa MemoryManager                                  │  │
+│  │  - Carrega config (/etc/memorandos/config.conf)             │  │
+│  │  - Inicializa FakeRedis                                     │  │
+│  │  - Inicializa TPM (--accepttp2mchanges=yes)                │  │
+│  │  - Chama JSONStart::init (que levanta o HttpServer)        │  │
+│  │  - Loop principal até sinal de shutdown                    │  │
+│  └────────────────────┬─────────────────────────────────────────┘  │
+│                       │                                            │
+│  ┌────────────────────▼─────────────────────────────────────────┐  │
+│  │                    JSONStart::init                          │  │
+│  │  - Inicializa JsonGenerator (templates)                    │  │
+│  │  - Adiciona template "usuario_teste"                       │  │
+│  │  - Executa teste de processamento (opcional)               │  │
+│  │  - Inicializa HttpServer (CRÍTICO)                         │  │
+│  └────────────────────┬─────────────────────────────────────────┘  │
+│                       │                                            │
+│  ┌────────────────────▼─────────────────────────────────────────┐  │
+│  │                   HttpServer                                │  │
+│  │  - Lê http_port, http_ip, http_docs do LerConfig           │  │
+│  │  - Carrega token de autenticação (/home/memorandos/webserver.conf)│
+│  │  - Cria socket, bind, listen                               │  │
+│  │  - Dispara accept_thread + 2 workers                       │  │
+│  │  - Cada worker processa requisição: auth → cookies → router│  │
+│  └────────────────────┬─────────────────────────────────────────┘  │
+│                       │                                            │
+│     ┌─────────────────┼─────────────────┐                       │
+│     │                 │                 │                       │
+│  ┌──▼──────┐    ┌─────▼─────┐    ┌──────▼──────┐              │
+│  │ auth    │    │ cookie   │    │ router     │              │
+│  │ load/   │    │ parse    │    │ route_     │              │
+│  │ verify  │    │ cookies  │    │ request    │              │
+│  └─────────┘    └───────────┘    └─────────────┘              │
+│                                                                     │
+│  ┌──────────────────────────────────────────────────────────────┐  │
+│  │              Módulos de Suporte                             │  │
+│  │  - MemoryManagerThread (arena allocator)                   │  │
+│  │  - FakeRedis (armazenamento chave-valor)                  │  │
+│  │  - JsonGenerator (template engine)                        │  │
+│  │  - TPM2 (pepper para autenticação)                        │  │
+│  └──────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────┘
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>📁 Estrutura de Diretórios e Módulos</h2>
+    <div class="box">
+        <table>
+            <thead>
+                <tr><th>Diretório</th><th>Módulo</th><th>Responsabilidade</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>memorymanager/</code></td><td>MemoryManagerThread</td><td>Gerenciador de arena (alocação/free por blocos de 1 MB)</td></tr>
+                <tr><td><code>fakeredis/</code></td><td>FakeRedis</td><td>Armazenamento persistente em memória (chave → valor) com TTL</td></tr>
+                <tr><td><code>jsonhandler/</code></td><td>JsonGenerator</td><td>Engine de templates JSON com placeholders <code>&lt;campo&gt;</code></td></tr>
+                <tr><td><code>tpm2/</code></td><td>TPMManager</td><td>Interface com TPM 2.0 para obter pepper (entropia do hardware)</td></tr>
+                <tr><td><code>simpleserver/</code></td><td>HttpServer</td><td>Servidor HTTP com autenticação, cookies, roteamento e workers</td></tr>
+                <tr><td><code>lerconfig/</code></td><td>LerConfig</td><td>Leitura de arquivo de configuração <code>key = value</code> (zero‑heap)</td></tr>
+                <tr><td><code>uteis/</code></td><td>Utils</td><td>Funções auxiliares (cópia segura, manipulação de arquivos, etc.)</td></tr>
+                <tr><td><code>generico/</code></td><td>JSONStart / ShutdownManager</td><td>Inicialização orquestrada e desligamento controlado</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>🔐 Autenticação e Token</h2>
+    <div class="box box-success">
+        <div class="box-title">Token derivado do TPM</div>
+        <p>
+            O servidor HTTP exige <strong>autenticação obrigatória</strong> via <code>Authorization: Bearer &lt;token&gt;</code>.
+            O token é gerado a partir do <strong>pepper</strong> (64 bytes obtidos do TPM) combinado com um <em>salt</em>
+            fixo, e submetido a SHA‑256, resultando em uma string de 64 caracteres hexadecimais.
+        </p>
+        <ul>
+            <li><strong>Arquivo de persistência:</strong> <code>/home/memorandos/webserver.conf</code></li>
+            <li><strong>Geração automática:</strong> se o arquivo não existir ou o token for inválido, o servidor gera um novo.</li>
+            <li><strong>Vínculo ao hardware:</strong> portar o executável para outra máquina força a regeneração do token.</li>
+        </ul>
+        <div class="note">
+            <strong>Salt atual:</strong> <code>"Onegai, bite, please"</code> (definido em <code>auth.cpp</code>).
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>🔄 Ordem de Inicialização</h2>
+    <div class="ascii-box">
+1. MemoryManagerThread::init(gb)
+2. LerConfig::Config::setMemoryManager(&mm)
+3. LerConfig::Config::carregar(CONFIG_FILE)
+4. FakeRedis::initialize(mm, token=0)
+5. TPMStart::initTPM(mm)
+6. JSONStart::init(mm, redis)
+   ├─ JsonGenerator::init(mm, redis)
+   ├─ addTemplate("usuario_teste", "...")
+   ├─ HttpServer::initialize(mm, redis, &tpm, token=1)
+   │   ├─ LerConfig::getString("http_docs", nullptr)  ← sem fallback!
+   │   ├─ auth::load_or_generate_token(tpm)
+   │   ├─ socket, bind, listen
+   │   └─ accept_thread + workers
+   └─ (se falhar, retorna false → sistema para)
+    </div>
+    <div class="box box-warning">
+        <div class="box-title">⚠️ Ponto Crítico</div>
+        <p>
+            O <code>HttpServer::initialize</code> <strong>não tem fallback</strong> para <code>http_docs</code>.
+            Se a chave não existir no arquivo de configuração, ele retorna <code>false</code> e o sistema inteiro falha.
+            Isso é proposital – <strong>ou a configuração está correta, ou o sistema não roda</strong>.
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>🧩 Como Adicionar uma Nova Rota</h2>
+    <div class="box box-info">
+        <div class="box-title">Passo a passo</div>
+        <ol>
+            <li>Abra <code>simpleserver/src/router.cpp</code>.</li>
+            <li>Localize a função <code>route_request</code>.</li>
+            <li>Adicione um novo bloco <code>if</code> antes do <code>return true;</code> final.</li>
+            <li>Use o padrão:</li>
+        </ol>
+        <pre><code>if (strcmp(req->method, "GET") == 0 && strcmp(req->path, "/minha-rota") == 0) {
+    resp->status_code = 200;
+    resp->content_type = "application/json";
+    resp->body = "{\"mensagem\":\"Olá, mundo!\"}";
+    resp->body_len = strlen(resp->body);
+    return true;
+}</code></pre>
+        <p><strong>Importante:</strong> a resposta <em>não deve</em> usar alocação dinâmica (heap) – use strings literais ou buffers estáticos. Para respostas dinâmicas, aloque um buffer na arena via <code>MemoryManagerThread::allocate()</code> e preencha-o.</p>
+        <div class="note">
+            <strong>Exemplo real:</strong> A rota <code>/api/query</code> gera um <em>ticket</em> e inicia processamento assíncrono – veja o código para referência.
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>🧹 Como Adicionar um Novo Middleware</h2>
+    <div class="box box-info">
+        <div class="box-title">Exemplo: Logging ou Rate Limiting</div>
+        <p>
+            O servidor HTTP processa cada requisição na função <code>HttpServer::process_request</code>
+            (em <code>http_server.cpp</code>). Para adicionar um middleware (ex.: logging, rate limiting),
+            insira o código <strong>após a autenticação</strong> e <strong>antes do roteamento</strong>.
+        </p>
+        <pre><code>// ----- MIDDLEWARE EXEMPLO (logging) -----
+fprintf(stdout, "📝 %s %s from %s\n", method, path, client_ip);
+// ----------------------------------------</code></pre>
+        <p>
+            Se o middleware precisar de estado (ex.: contador de requisições), use um <code>std::atomic</code>
+            ou um mutex, e aloque estruturas na arena se forem grandes.
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>🧠 Decisões Técnicas Importantes</h2>
+    <div class="box">
+        <h3>1. Bitmap do BlockAllocator na Stack</h3>
+        <p>
+            O <code>BlockAllocator</code> mantém um bitmap de 4 KB na <strong>stack</strong> (não na arena).
+            Isso foi uma <strong>exceção controlada</strong> aprovada pela equipe, pois o bitmap tem tamanho fixo
+            e pequeno, e colocar na stack libera toda a região mmap para dados. Veja a nota em
+            <code>block_allocator.cpp</code>.
+        </p>
+
+        <h3>2. Uso de <code>std::string_view</code> e Buffers da Arena</h3>
+        <p>
+            Embora o projeto proíba alocação dinâmica no heap, usamos <code>std::string_view</code>
+            (que é apenas uma referência) para manipular partes do buffer da requisição. Todos os buffers
+            de dados (cabeçalhos, corpos) são alocados via <code>MemoryManagerThread::allocate()</code>.
+        </p>
+
+        <h3>3. Tokens de Autenticação e TPM</h3>
+        <p>
+            O token é derivado do pepper do TPM para garantir que a autenticação esteja vinculada ao hardware.
+            A persistência em <code>/home/memorandos/webserver.conf</code> permite que o token sobreviva a reinícios.
+            Se o arquivo for apagado ou corrompido, o servidor gera um novo token automaticamente.
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>📋 Configuração Essencial</h2>
+    <div class="box">
+        <p>O arquivo <code>/etc/memorandos/config.conf</code> deve conter pelo menos:</p>
+        <pre><code>workeruser = andre
+http_port = 9010
+http_ip = 127.0.0.1
+http_docs = /home/memorandos/www</code></pre>
+        <p>
+            <strong>Nota:</strong> O <code>HttpServer</code> <strong>não aceita fallback</strong> para <code>http_docs</code> –
+            a chave deve existir e apontar para um diretório válido, caso contrário o sistema para.
+        </p>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>🔌 Integração com o ShutdownManager</h2>
+    <div class="box box-success">
+        <div class="box-title">Ordem de Desligamento</div>
+        <ol>
+            <li><code>HttpServer::shutdown()</code> – para de aceitar conexões e aguarda workers</li>
+            <li><code>JSONWorker::JsonGenerator::destroyInstance()</code></li>
+            <li><code>TPMStart::shutdownTPM()</code></li>
+            <li><code>FakeRedis::finalize()</code></li>
+            <li><code>LerConfig::Config::setMemoryManager(nullptr)</code></li>
+            <li><code>MemoryManagerThread::shutdown()</code></li>
+        </ol>
+        <p>Essa ordem garante que nenhum componente tente usar recursos já liberados.</p>
+    </div>
+
+    <!-- ============================================================ -->
+    <h2>🧪 Teste Rápido com <code>curl</code></h2>
+    <div class="box">
+        <pre><code># Obter token
+sudo cat /home/memorandos/webserver.conf
+
+# Health check
+curl -H "Authorization: Bearer &lt;token&gt;" http://localhost:9010/health
+
+# Enviar consulta
+curl -X POST http://localhost:9010/api/query \
+  -H "Authorization: Bearer &lt;token&gt;" \
+  -H "Content-Type: application/json" \
+  -d '{"usuario":"joao","dados":"SELECT 1"}'
+
+# Consultar resultado (substitua pelo ticket retornado)
+curl -H "Authorization: Bearer &lt;token&gt;" http://localhost:9010/api/result/123456789
+</code></pre>
+    </div>
+
+    <!-- ============================================================ -->
+    <hr>
+    <h2>📌 Resumo das Boas Práticas</h2>
+    <div class="box box-success">
+        <ul>
+            <li><strong>Sempre use <code>Utils::safeCopyString</code></strong> para copiar strings com segurança.</li>
+            <li><strong>Nunca aloque no heap</strong> – use <code>mm->allocate()</code> e libere com <code>mm->free()</code>.</li>
+            <li><strong>Nunca use <code>std::string</code> ou <code>std::vector</code></strong> em produção – use <code>char[]</code> com tamanho fixo ou buffers da arena.</li>
+            <li><strong>Funções que podem falhar</strong> devem retornar <code>bool</code> e preencher um buffer de erro.</li>
+            <li><strong>Inicialização é crítica</strong> – se algo falhar, retorne <code>false</code> para que o sistema pare.</li>
+            <li><strong>Não use <code>#pragma once</code> em arquivos <code>.cpp</code></strong> – apenas em cabeçalhos.</li>
+            <li><strong>Não use <em>forward declarations</em></strong> – inclua os headers completos.</li>
+        </ul>
+    </div>
+
+    <div class="footer">
+        <p>📅 Documento gerado em 2026-08-21 – <strong>Memorandos v2.0</strong></p>
+        <p style="color: #8b949e;">"Código que não pode ser explicado é código que não pode ser mantido."</p>
+    </div>
+
+</div>
+</body>
+</html>

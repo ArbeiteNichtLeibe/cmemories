@@ -1,0 +1,16 @@
+# Configuração padrão do sistema
+ragnarok = desenvolvimento
+memory = 20
+workeruser = andre
+db_host = localhost
+db_port = 5432
+db_name = memorandos
+db_user = postgres
+db_password = 
+api_prefix = /api/v1
+auth_enabled = true
+rate_limit = 100
+boas_vindas = Sistema de Controle de Memorandos versão 0.001 - ainda alfa
+template_file = /home/andre/memorandos/templates.bin
+tpm_pub_path = /home/andre/memorandos/tpm_pub.key
+tpm_priv_path = /home/andre/memorandos/tpm_priv.key
